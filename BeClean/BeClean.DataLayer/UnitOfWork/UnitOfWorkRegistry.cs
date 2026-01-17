@@ -5,18 +5,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 namespace BeClean.DataLayer.UnitOfWork
 {
     /// <summary>
-    /// Interface IUnitOfWorkRegistry
-    /// </summary>
-    public interface IUnitOfWorkRegistry
-    {
-        /// <summary>
-        /// Rollbacks all transactions asynchronous.
-        /// </summary>
-        /// <returns>Task.</returns>
-        Task RollbackAllAsync();
-    }
-
-    /// <summary>
     /// Class UnitOfWorkRegistry.
     /// </summary>
     public class UnitOfWorkRegistry : IUnitOfWorkRegistry
