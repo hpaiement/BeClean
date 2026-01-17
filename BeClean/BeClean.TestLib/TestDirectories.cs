@@ -1,4 +1,4 @@
-﻿namespace BeClean.DataLayer.IntegrationTest.Db
+﻿namespace BeClean.TestLib
 {
     public static class TestDirectories
     {

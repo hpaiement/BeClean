@@ -15,6 +15,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BeClean.Api", "BeClean.Api\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BeClean.Localization", "BeClean.Localization\BeClean.Localization.csproj", "{4D56B8E9-2E32-408C-8BA9-55272DEEF06A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BeClean.Api.UnitTest", "BeClean.Api.UnitTest\BeClean.Api.UnitTest.csproj", "{0F4EDB84-9638-40E4-BEC5-96E94E6423EE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BeClean.TestLib", "BeClean.TestLib\BeClean.TestLib.csproj", "{1525881B-C783-4B32-B669-1597299930CE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,6 +49,14 @@ Global
 		{4D56B8E9-2E32-408C-8BA9-55272DEEF06A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4D56B8E9-2E32-408C-8BA9-55272DEEF06A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4D56B8E9-2E32-408C-8BA9-55272DEEF06A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0F4EDB84-9638-40E4-BEC5-96E94E6423EE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0F4EDB84-9638-40E4-BEC5-96E94E6423EE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0F4EDB84-9638-40E4-BEC5-96E94E6423EE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0F4EDB84-9638-40E4-BEC5-96E94E6423EE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1525881B-C783-4B32-B669-1597299930CE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1525881B-C783-4B32-B669-1597299930CE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1525881B-C783-4B32-B669-1597299930CE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1525881B-C783-4B32-B669-1597299930CE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
