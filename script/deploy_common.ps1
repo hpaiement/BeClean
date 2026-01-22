@@ -1,14 +1,16 @@
 #!/usr/bin/env pwsh
 
 # Function to generate version file
-function New-VersionFile {
-    param([string]$OutputPath)
+function Generate-NewVersionFile {
+    param(
+        [string]$VersionFilePath,
+        [version]$Version
+    )
 
-    $versionPath = Join-Path $OutputPath "version.json"
-    $actualVersion = Get-ActualVersion -VersionFilePath $versionPath
+    $versionPath = Join-Path $VersionFilePath "version.json"
 
-    $version = @{
-        Version = (Increment-Version -CurrentVersion $actualVersion.Version).ToString()
+    $versionObject = @{
+        Version = $Version.ToString()
         BuildDate = Get-Date -Format o
         GitCommit = ""
         GitBranch = ""
@@ -19,22 +21,22 @@ function New-VersionFile {
     # Try to get Git information
     try {
         if((git rev-parse HEAD 2>$null) -ne $null){
-            $version.GitCommit = (git rev-parse HEAD 2>$null)
+            $versionObject.GitCommit = (git rev-parse HEAD 2>$null)
         } else {
-            $version.GitCommit = "Unknown"
+            $versionObject.GitCommit = "Unknown"
         }
 
         if((git rev-parse --abbrev-ref HEAD 2>$null) -ne $null){
-            $version.GitBranch = (git rev-parse --abbrev-ref HEAD 2>$null)
+            $versionObject.GitBranch = (git rev-parse --abbrev-ref HEAD 2>$null)
         } else {
-            $version.GitBranch = "Unknown"
+            $versionObject.GitBranch = "Unknown"
         }
     }
     catch {
         Write-Warning "Git information not available"
     }
     
-    $versionJson = $version | ConvertTo-Json -Depth 2
+    $versionJson = $versionObject | ConvertTo-Json -Depth 2
     $versionJson | Out-File -FilePath $versionPath -Encoding UTF8
     
     Write-Host "Version file created: $versionPath" -ForegroundColor Green
@@ -48,22 +50,30 @@ function Get-ActualVersion{
     param([string]$VersionFilePath)
 
     if (Test-Path -Path $VersionFilePath -PathType Leaf) {
-        return Get-Content -Path $VersionFilePath -Raw | ConvertFrom-Json
+        $versionObject = Get-Content -Path $VersionFilePath -Raw | ConvertFrom-Json
+        return [version]$versionObject.Version
     }
     else {
-        return @{
-            Version = ([version]"1.0.0").ToString()
-            BuildDate = ""
-            GitCommit = ""
-            GitBranch = ""
-            BuildMachine = ""
-            DeployedBy = ""
-        }
+        return [version]"1.0.0"
     }
 }
 
+function Get-NewVersion{
+    param(
+        [string]$VersionFileFolder,
+        [string]$VersionIncrement
+    )
+
+    $versionPath = Join-Path $VersionFileFolder "version.json"
+    $actualVersion = Get-ActualVersion -VersionFilePath $versionPath
+    return Increment-Version -CurrentVersion $actualVersion -VersionIncrement $VersionIncrement
+}
+
 function Increment-Version{
-    param([version]$CurrentVersion)
+    param(
+        [version]$CurrentVersion,
+        [string]$VersionIncrement
+    )
 
     if($VersionIncrement -eq "patch"){
         return [version]::new($CurrentVersion.Major, $CurrentVersion.Minor, $CurrentVersion.Build + 1)
