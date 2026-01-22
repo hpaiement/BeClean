@@ -16,4 +16,5 @@ $deployScriptPath = Join-Path $PSScriptRoot "../../script/deploy_folder.ps1"
     -VersionIncrement $VersionIncrement `
     -ProjectPath "./" `
     -CsProjFileName "BeClean.Api.csproj" `
-    -Configuration $Configuration
+    -Configuration $Configuration `
+    -GenerateVersionFile

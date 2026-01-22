@@ -1,7 +1,7 @@
 ﻿{
-    "BuildDate":  "2026-01-21T20:55:49.7899348-05:00",
-    "Version":  "1.0.1",
-    "GitCommit":  "80220cbba4f3a3fd8c01dd49f9b736af61901bda",
+    "BuildDate":  "2026-01-21T20:59:42.8668616-05:00",
+    "Version":  "1.0.2",
+    "GitCommit":  "fd6668707e31810279ac6379286ce219bc3d1523",
     "GitBranch":  "hpaiement/develop",
     "DeployedBy":  "admin",
     "BuildMachine":  "HUGO-LICHENS"

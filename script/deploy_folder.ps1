@@ -14,7 +14,10 @@ param(
     [string]$CsProjFileName,
     
     [Parameter(Mandatory=$false)]
-    [string]$Configuration = "Release"
+    [string]$Configuration = "Release",
+
+    [Parameter(Mandatory=$false)]
+    [switch]$GenerateVersionFile = $false
 )
 
 # Function to deploy to Azure
@@ -91,7 +94,9 @@ try {
     Set-CsprojVersion -CsProjFilePath $csProjFilePath -Version $NewVersion
 
     # Generate version file
-    Generate-NewVersionFile -VersionFilePath $ProjectPath -Version $NewVersion
+    if($GenerateVersionFile){
+        Generate-NewVersionFile -VersionFilePath $ProjectPath -Version $NewVersion
+    }
 
     # Build application
     Build-Application -ProjectPath $ProjectPath -Configuration $Configuration -OutputPath $publishDir
