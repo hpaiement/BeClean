@@ -14,8 +14,8 @@ function Generate-NewVersionFile {
         BuildDate = Get-Date -Format o
         GitCommit = ""
         GitBranch = ""
-        BuildMachine = Get-BuildMachineName
-        DeployedBy = Get-User
+        # BuildMachine = Get-BuildMachineName
+        # DeployedBy = Get-User
     }
     
     # Try to get Git information
@@ -54,7 +54,7 @@ function Get-ActualVersion{
         return [version]$versionObject.Version
     }
     else {
-        return [version]"1.0.0"
+        return $null
     }
 }
 
@@ -66,7 +66,12 @@ function Get-NewVersion{
 
     $versionPath = Join-Path $VersionFileFolder "version.json"
     $actualVersion = Get-ActualVersion -VersionFilePath $versionPath
-    return Increment-Version -CurrentVersion $actualVersion -VersionIncrement $VersionIncrement
+    if($actualVersion){
+        return Increment-Version -CurrentVersion $actualVersion -VersionIncrement $VersionIncrement
+    }
+    else{
+        return [version]"1.0.0"
+    }
 }
 
 function Increment-Version{
@@ -147,4 +152,35 @@ function New-DeploymentPackage {
     }
     
     Write-Host "Package created: $ZipPath" -ForegroundColor Green
+}
+
+function Set-CsprojVersion{
+    param(
+        [string]$CsProjFilePath,
+        [version]$Version
+    )
+
+    if (Test-Path -Path $CsProjFilePath) {
+        [xml]$csProjXml = Get-Content -Path $CsProjFilePath
+
+        $propertyGroupElement = $csProjXml.Project.PropertyGroup
+
+        if ($propertyGroupElement.VersionPrefix -eq $null) {
+            # If it doesn't exist, create it
+            $newElement = $csProjXml.CreateElement("VersionPrefix")
+            $newElement.InnerText = $Version.ToString()
+            
+            # Add it to the parent
+            $propertyGroupElement.AppendChild($newElement)
+        }
+        else {
+            # If it exists, just update the value
+            $propertyGroupElement.VersionPrefix = $Version.ToString()
+        }
+
+        $csProjXml.Save((Convert-Path $CsProjFilePath))
+    }
+    else{
+        Write-Host "The csproj file was not found, version could not be incremented" -ForegroundColor Yellow
+    }
 }

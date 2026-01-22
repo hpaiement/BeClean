@@ -14,10 +14,7 @@ param(
     [string]$CsProjFileName,
     
     [Parameter(Mandatory=$false)]
-    [string]$Configuration = "Release",
-
-    [Parameter(Mandatory=$false)]
-    [switch]$GenerateVersionFile = $false
+    [string]$Configuration = "Release"
 )
 
 # Function to deploy to Azure
@@ -30,37 +27,6 @@ function Deploy-ToFolder {
 
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to deploy"
-    }
-}
-
-function Set-CsprojVersion{
-    param(
-        [string]$CsProjFilePath,
-        [version]$Version
-    )
-
-    if (Test-Path -Path $CsProjFilePath) {
-        [xml]$csProjXml = Get-Content -Path $CsProjFilePath
-
-        $propertyGroupElement = $csProjXml.Project.PropertyGroup
-
-        if ($propertyGroupElement.VersionPrefix -eq $null) {
-            # If it doesn't exist, create it
-            $newElement = $csProjXml.CreateElement("VersionPrefix")
-            $newElement.InnerText = $Version.ToString()
-            
-            # Add it to the parent
-            $propertyGroupElement.AppendChild($newElement)
-        }
-        else {
-            # If it exists, just update the value
-            $propertyGroupElement.VersionPrefix = $Version.ToString()
-        }
-
-        $csProjXml.Save((Convert-Path $CsProjFilePath))
-    }
-    else{
-        Write-Host "The csproj file was not found, version could not be incremented" -ForegroundColor Yellow
     }
 }
 
@@ -94,9 +60,7 @@ try {
     Set-CsprojVersion -CsProjFilePath $csProjFilePath -Version $NewVersion
 
     # Generate version file
-    if($GenerateVersionFile){
-        Generate-NewVersionFile -VersionFilePath $ProjectPath -Version $NewVersion
-    }
+    Generate-NewVersionFile -VersionFilePath $ProjectPath -Version $NewVersion
 
     # Build application
     Build-Application -ProjectPath $ProjectPath -Configuration $Configuration -OutputPath $publishDir
