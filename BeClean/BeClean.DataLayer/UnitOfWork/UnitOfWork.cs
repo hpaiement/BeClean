@@ -86,14 +86,7 @@ namespace BeClean.DataLayer.UnitOfWork
                     await RollbackAllAsync();
                 else if (_savepointsStack.Contains(transactionId))
                 {
-                    // Force a save change to be sure no changes cross the savepoint milestone
-                    await SaveChangesAsync();
-                    string lastSavepointId;
-                    do
-                    {
-                        lastSavepointId = _savepointsStack.Pop();
-                        await _transaction!.RollbackToSavepointAsync(lastSavepointId);
-                    } while (lastSavepointId != transactionId);
+                    await RollbackRootTransactionAndThrowNestedException();
                 }
             }
             else
@@ -101,9 +94,7 @@ namespace BeClean.DataLayer.UnitOfWork
                 // Check if a nested transaction was started
                 if (_savepointsStack.Count != 0)
                 {
-                    // Force a save change to be sure no changes cross the savepoint milestone
-                    await SaveChangesAsync();
-                    await _transaction!.RollbackToSavepointAsync(_savepointsStack.Pop());
+                    await RollbackRootTransactionAndThrowNestedException();
                 }
                 else if (_transaction != null)
                 {
@@ -113,12 +104,20 @@ namespace BeClean.DataLayer.UnitOfWork
             }
         }
 
+        private async Task RollbackRootTransactionAndThrowNestedException()
+        {
+            await RollbackAllAsync();
+            throw new Exception("A nested transaction tried to rollback. Root transaction was rolled back before throwing this exception.");
+        }
+
         /// <inheritdoc/>
         public async Task RollbackAllAsync()
         {
-            while (_transaction != null)
+            _savepointsStack.Clear();
+            if (_transaction != null)
             {
-                await RollbackAsync();
+                await _transaction.RollbackAsync();
+                _transaction = null;
             }
         }
     }
