@@ -1,4 +1,5 @@
 ﻿using BeClean.DataLayer.IntegrationTest.Db.Chinook.DataContext;
+using BeClean.TestLib;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 

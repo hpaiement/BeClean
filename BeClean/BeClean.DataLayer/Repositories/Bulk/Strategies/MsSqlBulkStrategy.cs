@@ -46,7 +46,7 @@ CREATE TABLE #{tableName} (
         {
             using (var bulkCopy = _dbContext.Database.CurrentTransaction != null ? new SqlBulkCopy((SqlConnection)_dbContext.Database.GetDbConnection(), SqlBulkCopyOptions.Default, (SqlTransaction)_dbContext.Database.CurrentTransaction.GetDbTransaction()) : new SqlBulkCopy((SqlConnection)_dbContext.Database.GetDbConnection()))
             {
-                bulkCopy.DestinationTableName = tempTableName;
+                bulkCopy.DestinationTableName = $"#{tempTableName}";
 
                 var columns = _entityType
                     .GetProperties();
