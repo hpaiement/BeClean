@@ -25,7 +25,7 @@ namespace BeClean.DataLayer.Repositories.Bulk
             await _unitOfWork.BeginTransactionAsync();
             try
             {
-                var tempTableName = $"{nameof(MergeInsertAsync)}_{GetType().Name}_{Guid.NewGuid().ToString().Replace("-", "")}";
+                var tempTableName = _bulkStrategy.GetTempTableName($"{nameof(MergeInsertAsync)}_{GetType().Name}_{Guid.NewGuid().ToString().Replace("-", "")}");
                 await _bulkStrategy.CreateTempTableAsync(tempTableName);
                 await _bulkStrategy.BulkCopyToTempTableAsync(tempTableName, items);
                 await _bulkStrategy.MergeInsertTempTableAsync(tempTableName, compareProperties);
@@ -46,7 +46,7 @@ namespace BeClean.DataLayer.Repositories.Bulk
             await _unitOfWork.BeginTransactionAsync();
             try
             {
-                var tempTableName = $"{nameof(MergeAsync)}_{GetType().Name}_{Guid.NewGuid().ToString().Replace("-", "")}";
+                var tempTableName = _bulkStrategy.GetTempTableName($"{nameof(MergeAsync)}_{GetType().Name}_{Guid.NewGuid().ToString().Replace("-", "")}");
                 await _bulkStrategy.CreateTempTableAsync(tempTableName);
                 await _bulkStrategy.BulkCopyToTempTableAsync(tempTableName, items);
                 await _bulkStrategy.MergeTempTableAsync(tempTableName, compareProperties, dontUpdateColumns);

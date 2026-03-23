@@ -13,6 +13,8 @@ namespace BeClean.DataLayer.Repositories.Bulk.Strategies
     {
         private const string _providerName = "Microsoft.EntityFrameworkCore.SqlServer";
 
+        public override string GetTempTableName(string baseName) => $"#{baseName}";
+
         /// <inheritdoc/>
         public override async Task CreateTempTableAsync(string tableName)
         {
@@ -35,7 +37,7 @@ namespace BeClean.DataLayer.Repositories.Bulk.Strategies
             }
 
             var sql = $@"
-CREATE TABLE #{tableName} (
+CREATE TABLE {tableName} (
     {string.Join(",\n    ", columnDefinitions)}
 )";
             await _dbContext.Database.ExecuteSqlRawAsync(sql);
@@ -46,7 +48,7 @@ CREATE TABLE #{tableName} (
         {
             using (var bulkCopy = _dbContext.Database.CurrentTransaction != null ? new SqlBulkCopy((SqlConnection)_dbContext.Database.GetDbConnection(), SqlBulkCopyOptions.Default, (SqlTransaction)_dbContext.Database.CurrentTransaction.GetDbTransaction()) : new SqlBulkCopy((SqlConnection)_dbContext.Database.GetDbConnection()))
             {
-                bulkCopy.DestinationTableName = $"#{tempTableName}";
+                bulkCopy.DestinationTableName = tempTableName;
 
                 var columns = _entityType
                     .GetProperties();

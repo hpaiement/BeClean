@@ -7,7 +7,7 @@ namespace BeClean.DataLayer.IntegrationTest.Db.Chinook
 {
     public class ChinookSqlServerContextFixture : IDisposable
     {
-        private const string _connectionString = "Server=localhost;Database=<InsertDbNameHere>;User Id=sa;Password=P4ssword!;MultipleActiveResultSets=True;TrustServerCertificate=True";
+        private const string _connectionString = "Server=localhost;Database=<InsertDbNameHere>;User Id=sa;Password=DevP4ssw0rdOnly!;MultipleActiveResultSets=True;TrustServerCertificate=True";
 
         public readonly ChinookContext dbContext;
 

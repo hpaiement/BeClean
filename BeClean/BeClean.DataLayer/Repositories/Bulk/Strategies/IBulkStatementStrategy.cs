@@ -12,6 +12,14 @@ namespace BeClean.DataLayer.Repositories.Bulk.Strategies
         string GetTableFullName();
 
         /// <summary>
+        /// Returns a vendor-specific temp table name from a base name.
+        /// For example, SQL Server requires a # prefix.
+        /// </summary>
+        /// <param name="baseName"></param>
+        /// <returns></returns>
+        string GetTempTableName(string baseName);
+
+        /// <summary>
         /// Create a temp table for TEntity entity type. Can then be used for bulk operations (copy, merge, etc.)
         /// </summary>
         /// <param name="tableName"></param>

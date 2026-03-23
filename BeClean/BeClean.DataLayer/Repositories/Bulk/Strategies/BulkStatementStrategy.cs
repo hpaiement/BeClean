@@ -142,6 +142,8 @@ WHEN NOT MATCHED BY TARGET THEN
             return $"UPDATE SET {string.Join(",", columnNameToUpdate.Select(name => $"tgt.{EncloseDbIdentifier(name)}=src.{EncloseDbIdentifier(name)}"))}";
         }
 
+        public virtual string GetTempTableName(string baseName) => baseName;
+
         public virtual string GetTableFullName()
         {
             // Get the schema and table name
