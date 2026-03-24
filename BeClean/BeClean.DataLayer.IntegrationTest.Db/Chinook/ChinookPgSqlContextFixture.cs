@@ -20,7 +20,7 @@ namespace BeClean.DataLayer.IntegrationTest.Db.Chinook
             dbContext = new ChinookContext(options);
             dbContext.Database.EnsureCreated();
 
-            var sql = File.ReadAllText(Path.Join(TestDirectories.ProjectDirectory, "Chinook", "Data", "InsertData.PgSql.sql"));
+            var sql = File.ReadAllText(Path.Join(TestDirectories.GetProjectDirectory(typeof(ChinookPgSqlContextFixture)), "Chinook", "Data", "InsertData.PgSql.sql"));
             dbContext.Database.ExecuteSqlRaw(sql);
         }
 

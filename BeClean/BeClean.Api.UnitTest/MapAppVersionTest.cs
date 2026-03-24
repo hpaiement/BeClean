@@ -17,7 +17,7 @@ namespace BeClean.Api.UnitTest
 
             var app = builder.Build();
 
-            app.MapAppVersion("Version", Path.Join(TestDirectories.ProjectDirectory, "Data", "version.json"));
+            app.MapAppVersion("Version", Path.Join(TestDirectories.GetProjectDirectory(typeof(MapAppVersionTest)), "Data", "version.json"));
 
             await app.StartAsync();
 

@@ -22,7 +22,7 @@ namespace BeClean.DataLayer.IntegrationTest.Db.Chinook
             dbContext = new ChinookContext(options);
             dbContext.Database.EnsureCreated();
 
-            var sql = File.ReadAllText(Path.Join(TestDirectories.ProjectDirectory, "Chinook", "Data", "InsertData.SqlServer.sql"));
+            var sql = File.ReadAllText(Path.Join(TestDirectories.GetProjectDirectory(typeof(ChinookSqlServerContextFixture)), "Chinook", "Data", "InsertData.SqlServer.sql"));
             dbContext.Database.ExecuteSqlRaw(sql);
         }
 

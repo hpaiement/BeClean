@@ -22,6 +22,9 @@ const projects = {
   Api: {
     csproj: 'BeClean/BeClean.Api/BeClean.Api.csproj',
   },
+  TestLib: {
+    csproj: 'BeClean/BeClean.TestLib/BeClean.TestLib.csproj',
+  },
 };
 
 const cfg = projects[project];
