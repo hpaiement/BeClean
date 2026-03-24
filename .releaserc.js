@@ -52,7 +52,7 @@ module.exports = {
       // Pack and push to NuGet.org in the publish lifecycle phase (after tag is created)
       publishCmd: [
         `dotnet pack ${cfg.csproj} -c Release -o ./nupkg/${project}`,
-        `dotnet nuget push "./nupkg/${project}/*.nupkg" --api-key \${NUGET_API_KEY} --source https://api.nuget.org/v3/index.json --skip-duplicate`,
+        `dotnet nuget push "./nupkg/${project}/*.nupkg" --api-key $NUGET_API_KEY --source https://api.nuget.org/v3/index.json --skip-duplicate`,
       ].join(' && '),
     }],
     '@semantic-release/github',
