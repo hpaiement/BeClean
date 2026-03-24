@@ -55,6 +55,5 @@ module.exports = {
         `dotnet nuget push "./nupkg/${project}/*.nupkg" --api-key $NUGET_API_KEY --source https://api.nuget.org/v3/index.json --skip-duplicate`,
       ].join(' && '),
     }],
-    '@semantic-release/github',
   ],
 };
