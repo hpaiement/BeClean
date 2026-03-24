@@ -30,7 +30,7 @@ jobs:
           node-version: 20
           cache: npm
 
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.x
 
@@ -87,7 +87,7 @@ jobs:
           node-version: 20
           cache: npm
 
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.x
 
@@ -144,7 +144,7 @@ jobs:
           node-version: 20
           cache: npm
 
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.x
 
@@ -201,7 +201,7 @@ jobs:
           node-version: 20
           cache: npm
 
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.x
 
@@ -258,7 +258,7 @@ jobs:
           node-version: 20
           cache: npm
 
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.x
 
@@ -315,7 +315,7 @@ jobs:
           node-version: 20
           cache: npm
 
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.x
 
