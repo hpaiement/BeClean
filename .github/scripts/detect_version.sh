@@ -3,7 +3,7 @@
 # Usage: detect_version <ProjectName> <ProjectPath>
 #
 # Outputs "version=X.Y.Z" to $GITHUB_OUTPUT when a new version is warranted.
-# Skips silently when:
+# Skips silently when: 
 #   - A prior release tag exists AND no source files changed since that tag
 #   - Commits since last tag contain no conventional release triggers
 #
