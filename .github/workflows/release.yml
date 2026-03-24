@@ -39,98 +39,50 @@ jobs:
       - name: Determine Util version
         id: util
         env:
-          RELEASE_PROJECT: Util
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          LAST_TAG=$(git tag -l "Util[0-9]*" --sort=-v:refname | head -1)
-          if [ -n "$LAST_TAG" ] && [ -z "$(git diff --name-only "$LAST_TAG" HEAD -- BeClean/BeClean.Util)" ]; then
-            echo "No changes in Util since $LAST_TAG — skipping"
-            exit 0
-          fi
-          SR_OUT=$(npx semantic-release --dry-run 2>&1)
-          VERSION=$(echo "$SR_OUT" | grep "next release version" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
-          [ -n "$VERSION" ] && echo "version=$VERSION" >> $GITHUB_OUTPUT \
-                            || echo "No conventional release commits found for Util"
+          source .github/scripts/detect_version.sh
+          detect_version Util BeClean/BeClean.Util
 
       - name: Determine Repository version
         id: repository
         env:
-          RELEASE_PROJECT: Repository
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          LAST_TAG=$(git tag -l "Repository[0-9]*" --sort=-v:refname | head -1)
-          if [ -n "$LAST_TAG" ] && [ -z "$(git diff --name-only "$LAST_TAG" HEAD -- BeClean/BeClean.Repository)" ]; then
-            echo "No changes in Repository since $LAST_TAG — skipping"
-            exit 0
-          fi
-          SR_OUT=$(npx semantic-release --dry-run 2>&1)
-          VERSION=$(echo "$SR_OUT" | grep "next release version" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
-          [ -n "$VERSION" ] && echo "version=$VERSION" >> $GITHUB_OUTPUT \
-                            || echo "No conventional release commits found for Repository"
+          source .github/scripts/detect_version.sh
+          detect_version Repository BeClean/BeClean.Repository
 
       - name: Determine Localization version
         id: localization
         env:
-          RELEASE_PROJECT: Localization
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          LAST_TAG=$(git tag -l "Localization[0-9]*" --sort=-v:refname | head -1)
-          if [ -n "$LAST_TAG" ] && [ -z "$(git diff --name-only "$LAST_TAG" HEAD -- BeClean/BeClean.Localization)" ]; then
-            echo "No changes in Localization since $LAST_TAG — skipping"
-            exit 0
-          fi
-          SR_OUT=$(npx semantic-release --dry-run 2>&1)
-          VERSION=$(echo "$SR_OUT" | grep "next release version" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
-          [ -n "$VERSION" ] && echo "version=$VERSION" >> $GITHUB_OUTPUT \
-                            || echo "No conventional release commits found for Localization"
+          source .github/scripts/detect_version.sh
+          detect_version Localization BeClean/BeClean.Localization
 
       - name: Determine TestLib version
         id: testlib
         env:
-          RELEASE_PROJECT: TestLib
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          LAST_TAG=$(git tag -l "TestLib[0-9]*" --sort=-v:refname | head -1)
-          if [ -n "$LAST_TAG" ] && [ -z "$(git diff --name-only "$LAST_TAG" HEAD -- BeClean/BeClean.TestLib)" ]; then
-            echo "No changes in TestLib since $LAST_TAG — skipping"
-            exit 0
-          fi
-          SR_OUT=$(npx semantic-release --dry-run 2>&1)
-          VERSION=$(echo "$SR_OUT" | grep "next release version" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
-          [ -n "$VERSION" ] && echo "version=$VERSION" >> $GITHUB_OUTPUT \
-                            || echo "No conventional release commits found for TestLib"
+          source .github/scripts/detect_version.sh
+          detect_version TestLib BeClean/BeClean.TestLib
 
       - name: Determine DataLayer version
         id: datalayer
         env:
-          RELEASE_PROJECT: DataLayer
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          LAST_TAG=$(git tag -l "DataLayer[0-9]*" --sort=-v:refname | head -1)
-          if [ -n "$LAST_TAG" ] && [ -z "$(git diff --name-only "$LAST_TAG" HEAD -- BeClean/BeClean.DataLayer)" ]; then
-            echo "No changes in DataLayer since $LAST_TAG — skipping"
-            exit 0
-          fi
-          SR_OUT=$(npx semantic-release --dry-run 2>&1)
-          VERSION=$(echo "$SR_OUT" | grep "next release version" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
-          [ -n "$VERSION" ] && echo "version=$VERSION" >> $GITHUB_OUTPUT \
-                            || echo "No conventional release commits found for DataLayer"
+          source .github/scripts/detect_version.sh
+          detect_version DataLayer BeClean/BeClean.DataLayer
 
       - name: Determine Api version
         id: api
         env:
-          RELEASE_PROJECT: Api
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          LAST_TAG=$(git tag -l "Api[0-9]*" --sort=-v:refname | head -1)
-          if [ -n "$LAST_TAG" ] && [ -z "$(git diff --name-only "$LAST_TAG" HEAD -- BeClean/BeClean.Api)" ]; then
-            echo "No changes in Api since $LAST_TAG — skipping"
-            exit 0
-          fi
-          SR_OUT=$(npx semantic-release --dry-run 2>&1)
-          VERSION=$(echo "$SR_OUT" | grep "next release version" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
-          [ -n "$VERSION" ] && echo "version=$VERSION" >> $GITHUB_OUTPUT \
-                            || echo "No conventional release commits found for Api"
+          source .github/scripts/detect_version.sh
+          detect_version Api BeClean/BeClean.Api
 
       # ── Single commit + tags + NuGet publish ──────────────────────────────
 
