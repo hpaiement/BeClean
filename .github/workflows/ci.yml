@@ -34,7 +34,7 @@ jobs:
           dotnet-version: 10.x
 
       - name: Run unit tests
-        run: dotnet test BeClean/BeClean.Api.UnitTest/BeClean.Api.UnitTest.csproj -c Release --logger "github-actions;summary.includePassedTests=true"
+        run: dotnet test BeClean/BeClean.Api.UnitTest/BeClean.Api.UnitTest.csproj -c Release
 
   test-integration:
     name: Integration Tests
@@ -51,7 +51,7 @@ jobs:
         run: docker compose up -d --wait
 
       - name: Run integration tests
-        run: dotnet test BeClean/BeClean.DataLayer.IntegrationTest.Db/BeClean.DataLayer.IntegrationTest.Db.csproj -c Release --logger "github-actions;summary.includePassedTests=true"
+        run: dotnet test BeClean/BeClean.DataLayer.IntegrationTest.Db/BeClean.DataLayer.IntegrationTest.Db.csproj -c Release
 
       - name: Stop database containers
         if: always()
