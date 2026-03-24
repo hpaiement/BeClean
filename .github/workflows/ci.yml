@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [release]
+
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.x
+
+      - name: Restore
+        run: dotnet restore BeClean/BeClean.sln
+
+      - name: Build
+        run: dotnet build BeClean/BeClean.sln -c Release --no-restore
+
+  test-unit:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.x
+
+      - name: Run unit tests
+        run: dotnet test BeClean/BeClean.Api.UnitTest/BeClean.Api.UnitTest.csproj -c Release
+
+  test-integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.x
+
+      - name: Start database containers
+        run: docker compose up -d --wait
+
+      - name: Run integration tests
+        run: dotnet test BeClean/BeClean.DataLayer.IntegrationTest.Db/BeClean.DataLayer.IntegrationTest.Db.csproj -c Release
+
+      - name: Stop database containers
+        if: always()
+        run: docker compose down
