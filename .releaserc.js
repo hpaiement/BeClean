@@ -34,7 +34,7 @@ if (!cfg) {
 }
 
 module.exports = {
-  branches: ['main'],
+  branches: ['release'],
   tagFormat: `${project}\${version}`,
   plugins: [
     '@semantic-release/commit-analyzer',
