@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
+using System.Reflection;
 namespace BeClean.DataLayer.Repositories.Bulk.Strategies
 {
     public interface IBulkStatementStrategy<TEntity, TDbContext>
@@ -18,6 +19,13 @@ namespace BeClean.DataLayer.Repositories.Bulk.Strategies
         /// <param name="baseName"></param>
         /// <returns></returns>
         string GetTempTableName(string baseName);
+
+        /// <summary>
+        /// Return the TEntity property infos for the given expression
+        /// </summary>
+        /// <param name="propertyExpression"></param>
+        /// <returns></returns>
+        IEnumerable<PropertyInfo> GetProperties(Expression<Func<TEntity, object>>? propertyExpression);
 
         /// <summary>
         /// Create a temp table for TEntity entity type. Can then be used for bulk operations (copy, merge, etc.)

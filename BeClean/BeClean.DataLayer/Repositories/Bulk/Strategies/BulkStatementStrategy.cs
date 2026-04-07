@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using System.Linq.Expressions;
+using System.Reflection;
 
 namespace BeClean.DataLayer.Repositories.Bulk.Strategies
 {
@@ -175,19 +176,25 @@ WHEN NOT MATCHED BY TARGET THEN
         /// <exception cref="Exception"></exception>
         protected IEnumerable<string> GetPropertyNames(Expression<Func<TEntity, object>>? propertyExpression)
         {
-            if (propertyExpression == null)
-                return Enumerable.Empty<string>();
+            return GetProperties(propertyExpression).Select(p => p.Name);
+        }
 
-            IEnumerable<string> comparePropertyNames;
+        public IEnumerable<PropertyInfo> GetProperties(Expression<Func<TEntity, object>>? propertyExpression)
+        {
+            if (propertyExpression == null)
+                return Enumerable.Empty<PropertyInfo>();
+
+            IEnumerable<PropertyInfo> compareProperty;
             if (propertyExpression.Body is NewExpression newExpression && newExpression.Members != null)
             {
                 // Anonymous object with multiple properties
-                comparePropertyNames = newExpression.Members.Select(m => m.Name).ToList();
+                //compareProperty = newExpression.Members.Select(m => (PropertyInfo)m).ToList();
+                compareProperty = newExpression.Arguments.Select(a => (MemberExpression)a).Select(m => (PropertyInfo)m.Member).ToList();
             }
             else if (propertyExpression.Body is MemberExpression memberExpression)
             {
                 // Single property (e.g., x => x.Col1)
-                comparePropertyNames = new List<string> { memberExpression.Member.Name };
+                compareProperty = new List<PropertyInfo> { (PropertyInfo)memberExpression.Member };
             }
             else if (
                 propertyExpression.Body is UnaryExpression unaryExpression &&
@@ -195,13 +202,15 @@ WHEN NOT MATCHED BY TARGET THEN
                 unaryExpression.Operand is MemberExpression unaryMemberExpression)
             {
                 // Handles boxing for object (e.g., x => (object)x.PrimaryId)
-                comparePropertyNames = new List<string> { unaryMemberExpression.Member.Name };
+                compareProperty = new List<PropertyInfo> { (PropertyInfo)unaryMemberExpression.Member };
             }
             else
                 throw new Exception("compareProperties property format not supported");
 
-            return comparePropertyNames;
+            return compareProperty;
         }
 
     }
+
+
 }
