@@ -8,9 +8,10 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="README.md" Pack="true" PackagePath="\"/>
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="LinqKit" Version="1.3.11" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.0" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">

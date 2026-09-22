@@ -78,29 +78,24 @@ namespace BeClean.DataLayer.Repositories.Bulk
             Expression<Func<TModel, object>>? dontUpdateColumns = null, 
             bool ignoreTracker = true)
         {
-            await Task.CompletedTask;
-            throw new NotImplementedException();
-            //if (_dbContext.Database.ProviderName != "Microsoft.EntityFrameworkCore.SqlServer")
-            //    throw new Exception($"{GetType().Name}.{nameof(SynchronizeAsync)} method cannot be executed because it requires a SQL Server provider");
+            await _unitOfWork.BeginTransactionAsync();
 
-            //await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                var tempTableName = _bulkStrategy.GetTempTableName($"{nameof(SynchronizeAsync)}_{GetType().Name}_{Guid.NewGuid().ToString().Replace("-", "")}");
+                await _bulkStrategy.CreateTempTableAsync(tempTableName);
+                await _bulkStrategy.BulkCopyToTempTableAsync(tempTableName, items);
+                await _bulkStrategy.SynchronizeTempTableAsync(tempTableName, compareProperties, dontUpdateColumns);
+                await _unitOfWork.CommitAsync();
+            }
+            catch (Exception)
+            {
+                await _unitOfWork.RollbackAsync();
+                throw;
+            }
 
-            //try
-            //{
-            //    var tempTableName = $"#{Guid.NewGuid().ToString().Replace("-", "")}_{GetType().Name}_{nameof(SynchronizeAsync)}";
-            //    await CreateTempTableAsync(tempTableName);
-            //    await BulkCopyToTempTableAsync(tempTableName, items);
-            //    await SynchronizeTempTableAsync(tempTableName, compareProperties, dontUpdateColumns);
-            //    await _unitOfWork.CommitAsync();
-            //}
-            //catch (Exception)
-            //{
-            //    await _unitOfWork.RollbackAsync();
-            //    throw;
-            //}
-
-            //if (!ignoreTracker)
-            //    items = await ReloadEntityInChangeTracker(items, compareProperties);
+            if (!ignoreTracker)
+                items = await ReloadEntityInChangeTracker(items, compareProperties);
         }
 
         public async Task BulkInsertAsync(IEnumerable<TModel> items)

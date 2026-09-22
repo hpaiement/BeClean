@@ -72,6 +72,31 @@ WHEN NOT MATCHED BY TARGET THEN
             await _dbContext.Database.ExecuteSqlRawAsync(sql);
         }
 
+        public virtual async Task SynchronizeTempTableAsync(
+            string tempTableName,
+            Expression<Func<TEntity, object>> compareProperties,
+            Expression<Func<TEntity, object>>? dontUpdateColumns = null
+        )
+        {
+            var onClauseString = GenerateMergeOnClause(compareProperties);
+            var insertStatement = GenerateMergeInsertStatement();
+            var updateStatement = GenerateMergeUpdateStatement(compareProperties, dontUpdateColumns);
+
+            // When matched, update all columns except the compare columns
+            var sql = $@"
+MERGE INTO {EncloseDbIdentifier(GetTableFullName())} TGT
+USING {EncloseDbIdentifier(tempTableName)} SRC ON 
+{onClauseString}
+WHEN MATCHED THEN
+{updateStatement}
+WHEN NOT MATCHED BY TARGET THEN
+{insertStatement}
+WHEN NOT MATCHED BY SOURCE THEN
+DELETE;
+";
+            await _dbContext.Database.ExecuteSqlRawAsync(sql);
+        }
+
         /// <summary>
         /// Returns a string representing the MERGE "ON" clause. Example:
         /// "tgt.CarId = src.CarId AND tgt.CarColorId = src.CarColorId"

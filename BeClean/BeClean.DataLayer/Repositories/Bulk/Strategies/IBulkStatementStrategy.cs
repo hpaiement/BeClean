@@ -74,5 +74,19 @@ namespace BeClean.DataLayer.Repositories.Bulk.Strategies
             string tempTableName,
             Expression<Func<TEntity, object>> compareProperties
         );
+
+        /// <summary>
+        /// Synchronize data from temporary table to the real table using compareProperties for match. Missing rows in real table are added, 
+        /// existing rows are updated and missing rows in temp table are deleted (be careful with this last one)
+        /// </summary>
+        /// <param name="tempTableName"></param>
+        /// <param name="compareProperties"></param>
+        /// <param name="dontUpdateColumns"></param>
+        /// <returns></returns>
+        Task SynchronizeTempTableAsync(
+            string tempTableName,
+            Expression<Func<TEntity, object>> compareProperties,
+            Expression<Func<TEntity, object>>? dontUpdateColumns = null
+        );
     }
 }
