@@ -40,15 +40,14 @@ namespace BeClean.DataLayer.Repositories.Bulk.Strategies
         {
             var onClauseString = GenerateMergeOnClause(compareProperties);
             var insertStatement = GenerateMergeInsertStatement();
-            var updateStatement = GenerateMergeUpdateStatement(compareProperties, dontUpdateColumns);
+            var whenMatchedClause = GenerateMergeWhenMatchedClause(compareProperties, dontUpdateColumns);
 
             // When matched, update all columns except the compare columns
             var sql =
 $@"MERGE INTO {EncloseDbIdentifier(GetTableFullName())} tgt
-USING {EncloseDbIdentifier(tempTableName)} src ON 
+USING {EncloseDbIdentifier(tempTableName)} src ON
 {onClauseString}
-WHEN MATCHED THEN
-{updateStatement}
+{whenMatchedClause}
 WHEN NOT MATCHED BY TARGET THEN
 {insertStatement};";
             await _dbContext.Database.ExecuteSqlRawAsync(sql);
@@ -80,15 +79,14 @@ WHEN NOT MATCHED BY TARGET THEN
         {
             var onClauseString = GenerateMergeOnClause(compareProperties);
             var insertStatement = GenerateMergeInsertStatement();
-            var updateStatement = GenerateMergeUpdateStatement(compareProperties, dontUpdateColumns);
+            var whenMatchedClause = GenerateMergeWhenMatchedClause(compareProperties, dontUpdateColumns);
 
             // When matched, update all columns except the compare columns
-            var sql = $@"
-MERGE INTO {EncloseDbIdentifier(GetTableFullName())} TGT
-USING {EncloseDbIdentifier(tempTableName)} SRC ON 
+            var sql =
+$@"MERGE INTO {EncloseDbIdentifier(GetTableFullName())} tgt
+USING {EncloseDbIdentifier(tempTableName)} src ON
 {onClauseString}
-WHEN MATCHED THEN
-{updateStatement}
+{whenMatchedClause}
 WHEN NOT MATCHED BY TARGET THEN
 {insertStatement}
 WHEN NOT MATCHED BY SOURCE THEN
@@ -156,6 +154,39 @@ DELETE;
             Expression<Func<TEntity, object>> compareProperties,
             Expression<Func<TEntity, object>>? dontUpdateColumns = null)
         {
+            var columnNameToUpdate = GetColumnNamesToUpdate(compareProperties, dontUpdateColumns);
+
+            return $"UPDATE SET {string.Join(",", columnNameToUpdate.Select(name => $"tgt.{EncloseDbIdentifier(name)}=src.{EncloseDbIdentifier(name)}"))}";
+        }
+
+        /// <summary>
+        /// Returns the MERGE "WHEN MATCHED THEN UPDATE ..." clause, or an empty string when there is no column left
+        /// to update (an empty "UPDATE SET" is a syntax error)
+        /// </summary>
+        /// <param name="compareProperties"></param>
+        /// <param name="dontUpdateColumns"></param>
+        /// <returns></returns>
+        protected string GenerateMergeWhenMatchedClause(
+            Expression<Func<TEntity, object>> compareProperties,
+            Expression<Func<TEntity, object>>? dontUpdateColumns = null)
+        {
+            if (!GetColumnNamesToUpdate(compareProperties, dontUpdateColumns).Any())
+                return "";
+
+            return $"WHEN MATCHED THEN\n{GenerateMergeUpdateStatement(compareProperties, dontUpdateColumns)}";
+        }
+
+        /// <summary>
+        /// Returns all table columns except for those specified in dontUpdateColumns, those used for merge compare
+        /// (compareProperties) and generated primary keys
+        /// </summary>
+        /// <param name="compareProperties"></param>
+        /// <param name="dontUpdateColumns"></param>
+        /// <returns></returns>
+        protected List<string> GetColumnNamesToUpdate(
+            Expression<Func<TEntity, object>> compareProperties,
+            Expression<Func<TEntity, object>>? dontUpdateColumns = null)
+        {
             var comparePropertyNames = GetPropertyNames(compareProperties);
             var dontUpdatePropertyNames = GetPropertyNames(dontUpdateColumns);
             var columnNameToUpdate = new List<string>();
@@ -165,7 +196,7 @@ DELETE;
                     columnNameToUpdate.Add(property.Name);
             }
 
-            return $"UPDATE SET {string.Join(",", columnNameToUpdate.Select(name => $"tgt.{EncloseDbIdentifier(name)}=src.{EncloseDbIdentifier(name)}"))}";
+            return columnNameToUpdate;
         }
 
         public virtual string GetTempTableName(string baseName) => baseName;

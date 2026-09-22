@@ -104,14 +104,7 @@ CREATE TEMPORARY TABLE {EncloseDbIdentifier(tableName)} (
             Expression<Func<TEntity, object>> compareProperties,
             Expression<Func<TEntity, object>>? dontUpdateColumns = null)
         {
-            var comparePropertyNames = GetPropertyNames(compareProperties);
-            var dontUpdatePropertyNames = GetPropertyNames(dontUpdateColumns);
-            var columnNameToUpdate = new List<string>();
-            foreach (var property in _entityType.GetProperties())
-            {
-                if (!(property.ValueGenerated == ValueGenerated.OnAdd && property.IsPrimaryKey()) && !comparePropertyNames.Contains(property.Name) && !dontUpdatePropertyNames.Contains(property.Name))
-                    columnNameToUpdate.Add(property.Name);
-            }
+            var columnNameToUpdate = GetColumnNamesToUpdate(compareProperties, dontUpdateColumns);
 
             return $"UPDATE SET {string.Join(",", columnNameToUpdate.Select(name => $"{EncloseDbIdentifier(name)}=src.{EncloseDbIdentifier(name)}"))}";
         }
@@ -124,18 +117,40 @@ CREATE TEMPORARY TABLE {EncloseDbIdentifier(tableName)} (
         {
             var onClauseString = GenerateMergeOnClause(compareProperties);
             var insertStatement = GenerateMergeInsertStatement();
-            var updateStatement = GenerateMergeUpdateStatement(compareProperties, dontUpdateColumns);
+            var whenMatchedClause = GenerateMergeWhenMatchedClause(compareProperties, dontUpdateColumns);
 
             // When matched, update all columns except the compare columns
             var sql =
 $@"MERGE INTO {EncloseDbIdentifier(GetTableFullName())} tgt
-USING {EncloseDbIdentifier(tempTableName)} src ON 
+USING {EncloseDbIdentifier(tempTableName)} src ON
 {onClauseString}
-WHEN MATCHED THEN
-{updateStatement}
+{whenMatchedClause}
 WHEN NOT MATCHED THEN
 {insertStatement};";
             await _dbContext.Database.ExecuteSqlRawAsync(sql);
+        }
+
+        /// <summary>
+        /// Override because "WHEN NOT MATCHED BY SOURCE" is only supported since PostgreSQL 17. Rows missing from the
+        /// temp table are deleted first, then remaining rows are merged. Both statements run in the caller's transaction.
+        /// </summary>
+        public override async Task SynchronizeTempTableAsync(
+            string tempTableName,
+            Expression<Func<TEntity, object>> compareProperties,
+            Expression<Func<TEntity, object>>? dontUpdateColumns = null
+        )
+        {
+            var onClauseString = GenerateMergeOnClause(compareProperties);
+
+            var sql =
+$@"DELETE FROM {EncloseDbIdentifier(GetTableFullName())} tgt
+WHERE NOT EXISTS (
+    SELECT 1 FROM {EncloseDbIdentifier(tempTableName)} src
+    WHERE {onClauseString}
+);";
+            await _dbContext.Database.ExecuteSqlRawAsync(sql);
+
+            await MergeTempTableAsync(tempTableName, compareProperties, dontUpdateColumns);
         }
 
         public override async Task MergeInsertTempTableAsync(
