@@ -1,7 +1,14 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 
 namespace BeClean.Repository
 {
+    /// <summary>
+    /// Repository with high performance bulk operations.
+    ///
+    /// WARNING: bulk operations bypass the change tracker. Entities already tracked by the underlying context are NOT
+    /// refreshed and may be stale after a bulk operation: read the resulting data with a new context (or detach / reload
+    /// the tracked entities).
+    /// </summary>
     public interface IEFBulkRepository<TModel> : IRepository<TModel>
     {
         /// <summary>
@@ -9,38 +16,33 @@ namespace BeClean.Repository
         /// </summary>
         /// <param name="items"></param>
         /// <param name="compareProperties"></param>
-        /// <param name="ignoreTracker"></param>
         /// <returns></returns>
         Task MergeInsertAsync(
-            IEnumerable<TModel> items, 
-            Expression<Func<TModel, object>> compareProperties,
-            bool ignoreTracker = true);
+            IEnumerable<TModel> items,
+            Expression<Func<TModel, object>> compareProperties);
         /// <summary>
         /// Insert items in table if not already exists, update the row otherwise
         /// </summary>
         /// <param name="items"></param>
         /// <param name="compareProperties"></param>
         /// <param name="dontUpdateColumns">List of columns to ignore for update statement</param>
-        /// <param name="ignoreTracker"></param>
         /// <returns></returns>
         Task MergeAsync(
             IEnumerable<TModel> items,
             Expression<Func<TModel, object>> compareProperties,
-            Expression<Func<TModel, object>>? dontUpdateColumns = null,
-            bool ignoreTracker = true);
+            Expression<Func<TModel, object>>? dontUpdateColumns = null);
         /// <summary>
-        /// Insert items in table if not already exists, update the row if exists, delete it if item is no more in source table
+        /// Insert items in table if not already exists, update the row if exists, delete it if item is no more in source table.
+        /// Be careful: an empty <paramref name="items"/> collection deletes every row of the table.
         /// </summary>
         /// <param name="items"></param>
         /// <param name="compareProperties"></param>
         /// <param name="dontUpdateColumns">List of columns to ignore for update statement</param>
-        /// <param name="ignoreTracker"></param>
         /// <returns></returns>
         Task SynchronizeAsync(
             IEnumerable<TModel> items,
             Expression<Func<TModel, object>> compareProperties,
-            Expression<Func<TModel, object>>? dontUpdateColumns = null,
-            bool ignoreTracker = true);
+            Expression<Func<TModel, object>>? dontUpdateColumns = null);
 
         /// <summary>
         /// Insert multiple items with high performance
@@ -50,17 +52,15 @@ namespace BeClean.Repository
         Task BulkInsertAsync(IEnumerable<TModel> items);
 
         /// <summary>
-        /// Update items in table in batch if compareProperties matches 
+        /// Update items in table in batch if compareProperties matches
         /// </summary>
         /// <param name="items"></param>
         /// <param name="compareProperties"></param>
         /// <param name="dontUpdateColumns"></param>
-        /// <param name="ignoreTracker"></param>
         /// <returns></returns>
         Task BulkUpdateAsync(
             IEnumerable<TModel> items,
             Expression<Func<TModel, object>> compareProperties,
-            Expression<Func<TModel, object>>? dontUpdateColumns = null,
-            bool ignoreTracker = true);
+            Expression<Func<TModel, object>>? dontUpdateColumns = null);
     }
 }

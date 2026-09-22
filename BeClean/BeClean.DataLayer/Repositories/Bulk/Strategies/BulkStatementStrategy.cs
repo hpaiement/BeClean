@@ -235,7 +235,7 @@ DELETE;
             return GetProperties(propertyExpression).Select(p => p.Name);
         }
 
-        public IEnumerable<PropertyInfo> GetProperties(Expression<Func<TEntity, object>>? propertyExpression)
+        protected IEnumerable<PropertyInfo> GetProperties(Expression<Func<TEntity, object>>? propertyExpression)
         {
             if (propertyExpression == null)
                 return Enumerable.Empty<PropertyInfo>();
