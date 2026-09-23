@@ -202,6 +202,54 @@ namespace BeClean.DataLayer.IntegrationTest.Db
         }
 
         [Fact]
+        public async Task BulkUpdateAsync_Should_UpdateMatchedRowsOnly()
+        {
+            // Arrange
+            using var db = CreateDbFixture();
+            await InsertArtistsAsync(db, (1, "Artist1"), (2, "Artist2"), (3, "Artist3"));
+            using var scope = db.CreateArtistScope();
+
+            // Act
+            await scope.Repository.BulkUpdateAsync(new List<Artist>
+            {
+                _artistBuilder.WithIdentity(1).WithName("Artist1Renamed").Build(),
+                _artistBuilder.WithIdentity(2).WithName("Artist2Renamed").Build(),
+                _artistBuilder.WithIdentity(1000).WithName("NewArtist").Build(),
+            },
+            a => a.ArtistId);
+
+            // Assert
+            using var assertScope = db.CreateArtistScope();
+            var dbItems = (await assertScope.Repository.GetAllAsync()).OrderBy(a => a.ArtistId);
+            Assert.Collection(dbItems,
+                a => { Assert.Equal(1, a.ArtistId); Assert.Equal("Artist1Renamed", a.Name); },
+                a => { Assert.Equal(2, a.ArtistId); Assert.Equal("Artist2Renamed", a.Name); },
+                a => { Assert.Equal(3, a.ArtistId); Assert.Equal("Artist3", a.Name); });
+        }
+
+        [Fact]
+        public async Task BulkUpdateAsync_WithNoColumnLeftToUpdate_Should_NotChangeRows()
+        {
+            // Arrange
+            using var db = CreateDbFixture();
+            await InsertArtistsAsync(db, (1, "Artist1"));
+            using var scope = db.CreateArtistScope();
+
+            // Act
+            await scope.Repository.BulkUpdateAsync(new List<Artist>
+            {
+                _artistBuilder.WithIdentity(1).WithName("Artist1Renamed").Build(),
+            },
+            a => a.ArtistId,
+            dontUpdateColumns: a => a.Name!);
+
+            // Assert
+            using var assertScope = db.CreateArtistScope();
+            Assert.Collection(await assertScope.Repository.GetAllAsync(),
+                a => { Assert.Equal(1, a.ArtistId); Assert.Equal("Artist1", a.Name); });
+        }
+
+        [Fact]
         public async Task BulkOperation_WhenBulkNotEnabled_Should_ThrowExplainingHowToEnableIt()
         {
             // Arrange

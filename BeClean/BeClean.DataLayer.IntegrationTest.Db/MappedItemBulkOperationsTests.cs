@@ -103,6 +103,30 @@ namespace BeClean.DataLayer.IntegrationTest.Db
         }
 
         [Fact]
+        public async Task BulkUpdateAsync_Should_UpdateMatchedRowsExceptDontUpdateColumns()
+        {
+            // Arrange
+            using var db = CreateDbFixture();
+            var notInItems = _itemBuilder.WithIdentity(2).Build();
+            await InsertItemsAsync(db, _itemBuilder.WithIdentity(1).WithLabel("Existing").WithBatch(1).Build(), notInItems);
+            using var scope = db.CreateMappedItemScope();
+            var update = _itemBuilder.WithIdentity(1).WithLabel("Renamed").WithBatch(2).Build();
+
+            // Act
+            await scope.Repository.BulkUpdateAsync(new List<MappedItem>
+            {
+                update,
+                _itemBuilder.WithIdentity(3).Build(),
+            },
+            i => i.Code,
+            dontUpdateColumns: i => i.Batch);
+
+            // Assert: batch is not updated
+            var updated = new MappedItem { Id = 1, Code = update.Code, Label = "Renamed", Position = update.Position, Batch = 1 };
+            await AssertDbItemsAsync(db, updated, notInItems);
+        }
+
+        [Fact]
         public async Task CustomStatementThroughTempTable_Should_OnlyDeleteMissingRowsInScope()
         {
             // Arrange

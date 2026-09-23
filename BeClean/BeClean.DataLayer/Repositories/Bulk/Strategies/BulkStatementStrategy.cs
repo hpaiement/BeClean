@@ -69,6 +69,28 @@ WHEN NOT MATCHED BY TARGET THEN
             await _dbContext.Database.ExecuteSqlRawAsync(sql);
         }
 
+        public virtual async Task MergeUpdateTempTableAsync(
+            string tempTableName,
+            Expression<Func<TEntity, object>> compareProperties,
+            Expression<Func<TEntity, object>>? dontUpdateColumns = null
+        )
+        {
+            var whenMatchedClause = GenerateMergeWhenMatchedClause(compareProperties, dontUpdateColumns);
+
+            // Nothing to update (a MERGE statement without WHEN clause is a syntax error)
+            if (whenMatchedClause == "")
+                return;
+
+            var onClauseString = GenerateMergeOnClause(compareProperties);
+
+            var sql =
+$@"MERGE INTO {GetTableFullName()} tgt
+USING {EncloseDbIdentifier(tempTableName)} src ON
+{onClauseString}
+{whenMatchedClause};";
+            await _dbContext.Database.ExecuteSqlRawAsync(sql);
+        }
+
         public virtual async Task SynchronizeTempTableAsync(
             string tempTableName,
             Expression<Func<TEntity, object>> compareProperties,

@@ -107,6 +107,20 @@ namespace BeClean.DataLayer.Repositories.Bulk.Strategies
         );
 
         /// <summary>
+        /// Update rows of the real table matching temporary table rows on compareProperties. Missing rows are not
+        /// inserted. Nothing is done when no column is left to update.
+        /// </summary>
+        /// <param name="tempTableName"></param>
+        /// <param name="compareProperties"></param>
+        /// <param name="dontUpdateColumns"></param>
+        /// <returns></returns>
+        Task MergeUpdateTempTableAsync(
+            string tempTableName,
+            Expression<Func<TEntity, object>> compareProperties,
+            Expression<Func<TEntity, object>>? dontUpdateColumns = null
+        );
+
+        /// <summary>
         /// Synchronize data from temporary table to the real table using compareProperties for match. Missing rows in real table are added, 
         /// existing rows are updated and missing rows in temp table are deleted (be careful with this last one)
         /// </summary>

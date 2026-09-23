@@ -88,26 +88,10 @@ namespace BeClean.DataLayer.Repositories.Bulk
             Expression<Func<TModel, object>> compareProperties,
             Expression<Func<TModel, object>>? dontUpdateColumns = null)
         {
-            await Task.CompletedTask;
-            throw new NotImplementedException();
-            //if (_dbContext.Database.ProviderName != "Microsoft.EntityFrameworkCore.SqlServer")
-            //    throw new Exception($"{GetType().Name}.{nameof(BulkUpdateAsync)} method cannot be executed because it requires a SQL Server provider");
-
-            //await _unitOfWork.BeginTransactionAsync();
-
-            //try
-            //{
-            //    var tempTableName = $"#{Guid.NewGuid().ToString().Replace("-", "")}_{GetType().Name}_{nameof(BulkUpdateAsync)}";
-            //    await CreateTempTableAsync(tempTableName);
-            //    await BulkCopyToTempTableAsync(tempTableName, items);
-            //    await MergeUpdateTempTableAsync(tempTableName, compareProperties, dontUpdateColumns);
-            //    await _unitOfWork.CommitAsync();
-            //}
-            //catch (Exception)
-            //{
-            //    await _unitOfWork.RollbackAsync();
-            //    throw;
-            //}
+            await ExecuteThroughTempTableAsync(
+                items,
+                tempTableName => BulkStrategy.MergeUpdateTempTableAsync(tempTableName, compareProperties, dontUpdateColumns),
+                nameof(BulkUpdateAsync));
         }
 
         /// <summary>
