@@ -26,17 +26,18 @@ namespace BeClean.DataLayer.IntegrationTest.Db.Chinook.Repositories
                 if (_dbContext.Database.IsNpgsql())
                 {
                     // "WHEN NOT MATCHED BY SOURCE" is only supported since PostgreSQL 17
-                    await _dbContext.Database.ExecuteSqlRawAsync(
+                    var deleteSql =
 $@"DELETE FROM {targetTable} tgt
 WHERE tgt.{batchColumn} >= {{0}} AND NOT EXISTS (
     SELECT 1 FROM {sourceTable} src
     WHERE {onClause}
-);", fromBatch);
+);";
+                    await _dbContext.Database.ExecuteSqlRawAsync(deleteSql, fromBatch);
                     await BulkStrategy.MergeTempTableAsync(tempTableName, i => i.Code);
                 }
                 else
                 {
-                    await _dbContext.Database.ExecuteSqlRawAsync(
+                    var mergeSql =
 $@"MERGE INTO {targetTable} tgt
 USING {sourceTable} src ON
 {onClause}
@@ -44,7 +45,8 @@ USING {sourceTable} src ON
 WHEN NOT MATCHED BY TARGET THEN
 {BulkStrategy.GenerateMergeInsertStatement()}
 WHEN NOT MATCHED BY SOURCE AND tgt.{batchColumn} >= {{0}} THEN
-DELETE;", fromBatch);
+DELETE;";
+                    await _dbContext.Database.ExecuteSqlRawAsync(mergeSql, fromBatch);
                 }
             },
             nameof(SynchronizeFromBatchAsync));
