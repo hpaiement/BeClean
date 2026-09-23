@@ -1,21 +1,19 @@
-﻿using Microsoft.EntityFrameworkCore;
+using BeClean.DataLayer.Repositories.Bulk.Strategies;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using System.Linq.Expressions;
 
-namespace BeClean.DataLayer.Repositories.Bulk.Strategies
+namespace BeClean.DataLayer.PostgreSql
 {
     public class PgBulkStrategy<TEntity, TDbContext>(
         TDbContext dbContext
-    ) : BulkStatementStrategy<TEntity, TDbContext>(dbContext)
+    ) : BulkStatementStrategy<TEntity, TDbContext>(dbContext, _providerName)
         where TDbContext : DbContext
     {
         private const string _providerName = "Npgsql.EntityFrameworkCore.PostgreSQL";
 
         public override async Task CreateTempTableAsync(string tableName)
         {
-            if (_dbContext.Database.ProviderName != _providerName)
-                throw new Exception($"{GetType().Name}.{nameof(CreateTempTableAsync)} method cannot be executed because it requires a SQL Server provider");
-
             var columns = _entityType.GetProperties();
 
             var columnDefinitions = new List<string>();
@@ -41,9 +39,6 @@ CREATE TEMPORARY TABLE {EncloseDbIdentifier(tableName)} (
         /// <inheritdoc/>
         public override async Task BulkCopyToTempTableAsync(string tableName, IEnumerable<TEntity> items)
         {
-            if (_dbContext.Database.ProviderName != _providerName)
-                throw new Exception($"{GetType().Name}.{nameof(CreateTempTableAsync)} method cannot be executed because it requires a {_providerName} provider");
-
             var dbConnection = (Npgsql.NpgsqlConnection)_dbContext.Database.GetDbConnection();
 
             var copyStatement = $"COPY {EncloseDbIdentifier(tableName)} ({string.Join(",", _entityType.GetProperties().Select(p => EncloseDbIdentifier(p.Name)))}) FROM STDIN (FORMAT BINARY)";
@@ -66,9 +61,6 @@ CREATE TEMPORARY TABLE {EncloseDbIdentifier(tableName)} (
         /// <inheritdoc/>
         public override async Task BulkCopyToDbTableAsync(IEnumerable<TEntity> items)
         {
-            if (_dbContext.Database.ProviderName != _providerName)
-                throw new Exception($"{GetType().Name}.{nameof(CreateTempTableAsync)} method cannot be executed because it requires a {_providerName} provider");
-
             var dbConnection = (Npgsql.NpgsqlConnection)_dbContext.Database.GetDbConnection();
             var entityPropertiesToCopy = _entityType
                 .GetProperties()

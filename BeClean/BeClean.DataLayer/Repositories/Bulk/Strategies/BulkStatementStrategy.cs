@@ -5,32 +5,30 @@ using System.Reflection;
 
 namespace BeClean.DataLayer.Repositories.Bulk.Strategies
 {
-    public abstract class BulkStatementStrategy<TEntity, TDbContext>(
-        TDbContext dbContext
-    ) : IBulkStatementStrategy<TEntity, TDbContext>
+    public abstract class BulkStatementStrategy<TEntity, TDbContext> : IBulkStatementStrategy<TEntity, TDbContext>
         where TDbContext : DbContext
     {
-        protected readonly TDbContext _dbContext = dbContext;
-        protected readonly IEntityType _entityType = dbContext.Model.FindEntityType(typeof(TEntity))
-            ?? throw new Exception($"{nameof(TEntity)} is not a valid model for database {nameof(TDbContext)}");
+        protected readonly TDbContext _dbContext;
+        protected readonly IEntityType _entityType;
 
-        public virtual async Task CreateTempTableAsync(string tableName)
+        /// <param name="dbContext"></param>
+        /// <param name="providerName">EF database provider required by the strategy (see DatabaseFacade.ProviderName)</param>
+        /// <exception cref="NotSupportedException">The db context uses another database provider</exception>
+        protected BulkStatementStrategy(TDbContext dbContext, string providerName)
         {
-            await Task.CompletedTask;
-            throw new NotImplementedException();
+            if (dbContext.Database.ProviderName != providerName)
+                throw new NotSupportedException($"{GetType().Name} requires the {providerName} database provider, but {typeof(TDbContext).Name} uses {dbContext.Database.ProviderName}");
+
+            _dbContext = dbContext;
+            _entityType = dbContext.Model.FindEntityType(typeof(TEntity))
+                ?? throw new Exception($"{typeof(TEntity).Name} is not a valid model for database {typeof(TDbContext).Name}");
         }
 
-        public virtual async Task BulkCopyToTempTableAsync(string tempTableName, IEnumerable<TEntity> items)
-        {
-            await Task.CompletedTask;
-            throw new NotImplementedException();
-        }
+        public abstract Task CreateTempTableAsync(string tableName);
 
-        public virtual async Task BulkCopyToDbTableAsync(IEnumerable<TEntity> items)
-        {
-            await Task.CompletedTask;
-            throw new NotImplementedException();
-        }
+        public abstract Task BulkCopyToTempTableAsync(string tempTableName, IEnumerable<TEntity> items);
+
+        public abstract Task BulkCopyToDbTableAsync(IEnumerable<TEntity> items);
 
         public virtual async Task MergeTempTableAsync(
             string tempTableName,

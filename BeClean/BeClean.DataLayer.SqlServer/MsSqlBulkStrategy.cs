@@ -1,14 +1,15 @@
-﻿using Microsoft.Data.SqlClient;
+using BeClean.DataLayer.Repositories.Bulk.Strategies;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage;
 using System.Data;
 
-namespace BeClean.DataLayer.Repositories.Bulk.Strategies
+namespace BeClean.DataLayer.SqlServer
 {
     public class MsSqlBulkStrategy<TEntity, TDbContext>(
         TDbContext dbContext
-    ) : BulkStatementStrategy<TEntity, TDbContext>(dbContext)
+    ) : BulkStatementStrategy<TEntity, TDbContext>(dbContext, _providerName)
         where TDbContext : DbContext
     {
         private const string _providerName = "Microsoft.EntityFrameworkCore.SqlServer";
@@ -18,9 +19,6 @@ namespace BeClean.DataLayer.Repositories.Bulk.Strategies
         /// <inheritdoc/>
         public override async Task CreateTempTableAsync(string tableName)
         {
-            if (_dbContext.Database.ProviderName != _providerName)
-                throw new Exception($"{GetType().Name}.{nameof(CreateTempTableAsync)} method cannot be executed because it requires a SQL Server provider");
-
             var columns = _entityType.GetProperties();
 
             var columnDefinitions = new List<string>();

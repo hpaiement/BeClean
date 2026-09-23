@@ -15,7 +15,8 @@ namespace BeClean.DataLayer.IntegrationTest.Db
         /// <summary>
         /// Creates a new, empty database on the provider under test
         /// </summary>
-        protected abstract ChinookDbFixture CreateDbFixture();
+        /// <param name="useBeCleanBulk">Enables bulk operations on the db context options</param>
+        protected abstract ChinookDbFixture CreateDbFixture(bool useBeCleanBulk = true);
 
         private readonly ArtistBuilder _artistBuilder = new BuilderCollection().GetBuilder<ArtistBuilder>();
 
@@ -200,6 +201,41 @@ namespace BeClean.DataLayer.IntegrationTest.Db
             Assert.Equal(initialArtists, dbItems);
         }
 
+        [Fact]
+        public async Task BulkOperation_WhenBulkNotEnabled_Should_ThrowExplainingHowToEnableIt()
+        {
+            // Arrange
+            using var db = CreateDbFixture(useBeCleanBulk: false);
+            using var scope = db.CreateArtistScope();
+
+            // Act
+            var mergeTask = scope.Repository.MergeAsync(new List<Artist>
+            {
+                _artistBuilder.WithIdentity(1).WithName("Artist1").Build(),
+            },
+            a => a.ArtistId);
+
+            // Assert
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => mergeTask);
+            Assert.Contains("UseBeCleanBulk()", exception.Message);
+        }
+
+        [Fact]
+        public async Task CrudOperation_WhenBulkNotEnabled_Should_Work()
+        {
+            // Arrange
+            using var db = CreateDbFixture(useBeCleanBulk: false);
+            using var scope = db.CreateArtistScope();
+
+            // Act
+            await scope.Repository.InsertAsync(_artistBuilder.WithIdentity(1).WithName("Artist1").Build());
+
+            // Assert
+            using var assertScope = db.CreateArtistScope();
+            Assert.Collection(await assertScope.Repository.GetAllAsync(),
+                a => { Assert.Equal(1, a.ArtistId); Assert.Equal("Artist1", a.Name); });
+        }
+
         private async Task InsertArtistsAsync(ChinookDbFixture db, params (int Id, string Name)[] artists)
         {
             using var scope = db.CreateArtistScope();
@@ -211,11 +247,11 @@ namespace BeClean.DataLayer.IntegrationTest.Db
 
     public class SqlServerBulkOperationsTests : BulkOperationsTests
     {
-        protected override ChinookDbFixture CreateDbFixture() => new ChinookSqlServerDbFixture();
+        protected override ChinookDbFixture CreateDbFixture(bool useBeCleanBulk = true) => new ChinookSqlServerDbFixture(useBeCleanBulk);
     }
 
     public class PgSqlBulkOperationsTests : BulkOperationsTests
     {
-        protected override ChinookDbFixture CreateDbFixture() => new ChinookPgSqlDbFixture();
+        protected override ChinookDbFixture CreateDbFixture(bool useBeCleanBulk = true) => new ChinookPgSqlDbFixture(useBeCleanBulk);
     }
 }
