@@ -122,28 +122,6 @@ WHEN NOT MATCHED THEN
             await _dbContext.Database.ExecuteSqlRawAsync(sql);
         }
 
-        /// <summary>
-        /// Override because "WHEN NOT MATCHED BY SOURCE" is only supported since PostgreSQL 17. Rows missing from the
-        /// temp table are deleted first, then remaining rows are merged. Both statements run in the caller's transaction.
-        /// </summary>
-        public override async Task SynchronizeTempTableAsync(
-            string tempTableName,
-            Expression<Func<TEntity, object>> compareProperties,
-            Expression<Func<TEntity, object>>? dontUpdateColumns = null
-        )
-        {
-            var onClauseString = GenerateMergeOnClause(compareProperties);
-
-            var sql =
-$@"DELETE FROM {GetTableFullName()} tgt
-WHERE NOT EXISTS (
-    SELECT 1 FROM {EncloseDbIdentifier(tempTableName)} src
-    WHERE {onClauseString}
-);";
-            await _dbContext.Database.ExecuteSqlRawAsync(sql);
-
-            await MergeTempTableAsync(tempTableName, compareProperties, dontUpdateColumns);
-        }
 
         public override async Task MergeInsertTempTableAsync(
             string tempTableName,

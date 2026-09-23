@@ -103,6 +103,25 @@ namespace BeClean.DataLayer.IntegrationTest.Db
         }
 
         [Fact]
+        public async Task SynchronizeAsync_OnNullableCompareProperty_Should_NotMatchNullValues()
+        {
+            // Arrange: like the SQL MERGE ON clause, a null compare value never matches (even another null)
+            using var db = CreateDbFixture();
+            var existing = _itemBuilder.WithIdentity(1).Build();
+            existing.Label = null;
+            await InsertItemsAsync(db, existing);
+            using var scope = db.CreateMappedItemScope();
+            var item = _itemBuilder.WithIdentity(2).Build();
+            item.Label = null;
+
+            // Act
+            await scope.Repository.SynchronizeAsync(new List<MappedItem> { item }, i => i.Label!);
+
+            // Assert
+            await AssertDbItemsAsync(db, item);
+        }
+
+        [Fact]
         public async Task BulkUpdateAsync_Should_UpdateMatchedRowsExceptDontUpdateColumns()
         {
             // Arrange
@@ -127,7 +146,7 @@ namespace BeClean.DataLayer.IntegrationTest.Db
         }
 
         [Fact]
-        public async Task CustomStatementThroughTempTable_Should_OnlyDeleteMissingRowsInScope()
+        public async Task SynchronizeAsync_WithDeleteScope_Should_OnlyDeleteMissingRowsInScope()
         {
             // Arrange
             using var db = CreateDbFixture();
@@ -141,7 +160,8 @@ namespace BeClean.DataLayer.IntegrationTest.Db
             var inserted = _itemBuilder.WithIdentity(4).WithBatch(2).Build();
 
             // Act
-            await scope.Repository.SynchronizeFromBatchAsync(new List<MappedItem> { updated, inserted }, fromBatch: 2);
+            await scope.Repository.SynchronizeAsync(new List<MappedItem> { updated, inserted }, i => i.Code,
+                deleteScope: i => i.Batch >= 2);
 
             // Assert
             await AssertDbItemsAsync(db, outOfScope, updated, inserted);
