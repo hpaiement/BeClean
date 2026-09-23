@@ -25,17 +25,17 @@ namespace BeClean.DataLayer.SqlServer
 
             foreach (var column in columns)
             {
-                var columnName = column.GetColumnName(); // Get column name
+                var columnName = GetColumnName(column); // Get column name
                 var columnType = column.GetColumnType(); // Get SQL type
                 var isNullable = column.IsNullable;      // Check nullability
 
                 // Build the column definition
-                var columnDefinition = $"{columnName} {columnType} {(isNullable ? "NULL" : "NOT NULL")}";
+                var columnDefinition = $"{EncloseDbIdentifier(columnName)} {columnType} {(isNullable ? "NULL" : "NOT NULL")}";
                 columnDefinitions.Add(columnDefinition);
             }
 
             var sql = $@"
-CREATE TABLE {tableName} (
+CREATE TABLE {EncloseDbIdentifier(tableName)} (
     {string.Join(",\n    ", columnDefinitions)}
 )";
             await _dbContext.Database.ExecuteSqlRawAsync(sql);
@@ -54,7 +54,7 @@ CREATE TABLE {tableName} (
 
                 foreach (var column in columns)
                 {
-                    bulkCopy.ColumnMappings.Add(column.Name, column.Name);
+                    bulkCopy.ColumnMappings.Add(column.Name, GetColumnName(column));
                 }
 
                 await bulkCopy.WriteToServerAsync(ToDataTable(items));
@@ -74,7 +74,7 @@ CREATE TABLE {tableName} (
 
                 foreach (var column in columns)
                 {
-                    bulkCopy.ColumnMappings.Add(column.Name, column.Name);
+                    bulkCopy.ColumnMappings.Add(column.Name, GetColumnName(column));
                 }
 
                 await bulkCopy.WriteToServerAsync(ToDataTable(items));
@@ -106,7 +106,7 @@ CREATE TABLE {tableName} (
             return dataTable;
         }
 
-        protected override string EncloseDbIdentifier(string identifier)
+        public override string EncloseDbIdentifier(string identifier)
         {
             return $"[{identifier}]";
         }

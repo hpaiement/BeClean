@@ -37,7 +37,10 @@ namespace BeClean.DataLayer.IntegrationTest.Db.Chinook.Fixtures
         /// Returns a new scope (fresh db context, unit of work and repository). Use a separate scope to assert
         /// on data so change tracker state from the "act" part of the test does not leak into assertions.
         /// </summary>
-        public ArtistScope CreateArtistScope() => new(CreateDbContext());
+        public RepositoryScope<ArtistRepository> CreateArtistScope() => new(CreateDbContext(), (dbContext, unitOfWork) => new ArtistRepository(dbContext, unitOfWork));
+
+        /// <inheritdoc cref="CreateArtistScope"/>
+        public RepositoryScope<MappedItemRepository> CreateMappedItemScope() => new(CreateDbContext(), (dbContext, unitOfWork) => new MappedItemRepository(dbContext, unitOfWork));
 
         /// <summary>
         /// Returns a lazily-created, shared instance of <typeparamref name="T"/> for the lifetime of this fixture.
@@ -65,17 +68,17 @@ namespace BeClean.DataLayer.IntegrationTest.Db.Chinook.Fixtures
         }
     }
 
-    public sealed class ArtistScope : IDisposable
+    public sealed class RepositoryScope<TRepository> : IDisposable
     {
         public ChinookContext DbContext { get; }
         public ChinookUnitOfWork UnitOfWork { get; }
-        public ArtistRepository Repository { get; }
+        public TRepository Repository { get; }
 
-        public ArtistScope(ChinookContext dbContext)
+        public RepositoryScope(ChinookContext dbContext, Func<ChinookContext, ChinookUnitOfWork, TRepository> createRepository)
         {
             DbContext = dbContext;
             UnitOfWork = new ChinookUnitOfWork(dbContext);
-            Repository = new ArtistRepository(dbContext, UnitOfWork);
+            Repository = createRepository(dbContext, UnitOfWork);
         }
 
         public void Dispose() => DbContext.Dispose();

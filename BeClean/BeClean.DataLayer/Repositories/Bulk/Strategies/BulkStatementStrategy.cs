@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -42,7 +42,7 @@ namespace BeClean.DataLayer.Repositories.Bulk.Strategies
 
             // When matched, update all columns except the compare columns
             var sql =
-$@"MERGE INTO {EncloseDbIdentifier(GetTableFullName())} tgt
+$@"MERGE INTO {GetTableFullName()} tgt
 USING {EncloseDbIdentifier(tempTableName)} src ON
 {onClauseString}
 {whenMatchedClause}
@@ -60,7 +60,7 @@ WHEN NOT MATCHED BY TARGET THEN
             var insertStatement = GenerateMergeInsertStatement();
 
             var sql = 
-$@"MERGE INTO {EncloseDbIdentifier(GetTableFullName())} tgt
+$@"MERGE INTO {GetTableFullName()} tgt
 USING {EncloseDbIdentifier(tempTableName)} src ON 
 {onClauseString}
 WHEN NOT MATCHED BY TARGET THEN
@@ -81,7 +81,7 @@ WHEN NOT MATCHED BY TARGET THEN
 
             // When matched, update all columns except the compare columns
             var sql =
-$@"MERGE INTO {EncloseDbIdentifier(GetTableFullName())} tgt
+$@"MERGE INTO {GetTableFullName()} tgt
 USING {EncloseDbIdentifier(tempTableName)} src ON
 {onClauseString}
 {whenMatchedClause}
@@ -100,7 +100,7 @@ DELETE;
         /// <param name="compareProperties"></param>
         /// <returns></returns>
         /// <exception cref="InvalidOperationException"></exception>
-        protected string GenerateMergeOnClause(Expression<Func<TEntity, object>> compareProperties)
+        public string GenerateMergeOnClause(Expression<Func<TEntity, object>> compareProperties)
         {
             var comparePropertyNames = GetPropertyNames(compareProperties);
 
@@ -113,9 +113,7 @@ DELETE;
                 if (property == null)
                     throw new InvalidOperationException($"Property '{propertyName}' not found in the entity {typeof(TEntity).Name}.");
 
-                var columnName = property.GetColumnName(StoreObjectIdentifier.Table(_entityType.GetTableName()!, _entityType.GetSchema()));
-                if (string.IsNullOrEmpty(columnName))
-                    throw new InvalidOperationException($"Column name not found for property '{propertyName}'.");
+                var columnName = GetColumnName(property);
 
                 // Add the comparison to the ON clause
                 onClauses.Add($"tgt.{EncloseDbIdentifier(columnName)} = src.{EncloseDbIdentifier(columnName)}");
@@ -128,13 +126,13 @@ DELETE;
         /// Returns a string containing an INSERT statement with all columns of the table
         /// </summary>
         /// <returns></returns>
-        protected string GenerateMergeInsertStatement()
+        public string GenerateMergeInsertStatement()
         {
             var columnNameToInsert = new List<string>();
             foreach (var property in _entityType.GetProperties())
             {
                 if (!(property.ValueGenerated == ValueGenerated.OnAdd && property.IsPrimaryKey()))
-                    columnNameToInsert.Add(property.Name);
+                    columnNameToInsert.Add(GetColumnName(property));
             }
 
             return $"INSERT ({string.Join(",", columnNameToInsert.Select(EncloseDbIdentifier))}) VALUES ({string.Join(",", columnNameToInsert.Select(name => $"src.{EncloseDbIdentifier(name)}"))})";
@@ -164,7 +162,7 @@ DELETE;
         /// <param name="compareProperties"></param>
         /// <param name="dontUpdateColumns"></param>
         /// <returns></returns>
-        protected string GenerateMergeWhenMatchedClause(
+        public string GenerateMergeWhenMatchedClause(
             Expression<Func<TEntity, object>> compareProperties,
             Expression<Func<TEntity, object>>? dontUpdateColumns = null)
         {
@@ -191,7 +189,7 @@ DELETE;
             foreach (var property in _entityType.GetProperties())
             {
                 if (!(property.ValueGenerated == ValueGenerated.OnAdd && property.IsPrimaryKey()) && !comparePropertyNames.Contains(property.Name) && !dontUpdatePropertyNames.Contains(property.Name))
-                    columnNameToUpdate.Add(property.Name);
+                    columnNameToUpdate.Add(GetColumnName(property));
             }
 
             return columnNameToUpdate;
@@ -203,9 +201,24 @@ DELETE;
         {
             // Get the schema and table name
             var schema = _entityType.GetSchema();
-            var tableName = _entityType.GetTableName();
+            var tableName = EncloseDbIdentifier(_entityType.GetTableName()!);
 
-            return schema != null ? $"{schema}.{tableName!}" : $"{tableName!}";
+            return schema != null ? $"{EncloseDbIdentifier(schema)}.{tableName}" : tableName;
+        }
+
+        /// <summary>
+        /// Returns the table column name of an entity property (may differ from the property name, see HasColumnName)
+        /// </summary>
+        /// <param name="property"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
+        protected string GetColumnName(IProperty property)
+        {
+            var columnName = property.GetColumnName(StoreObjectIdentifier.Table(_entityType.GetTableName()!, _entityType.GetSchema()));
+            if (string.IsNullOrEmpty(columnName))
+                throw new InvalidOperationException($"Column name not found for property '{property.Name}'.");
+
+            return columnName;
         }
 
         /// <summary>
@@ -217,7 +230,7 @@ DELETE;
         /// </summary>
         /// <param name="identifier"></param>
         /// <returns></returns>
-        protected virtual string EncloseDbIdentifier(string identifier)
+        public virtual string EncloseDbIdentifier(string identifier)
         {
             return identifier;
         }

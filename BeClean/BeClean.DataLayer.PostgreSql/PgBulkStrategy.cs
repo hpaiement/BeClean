@@ -20,7 +20,7 @@ namespace BeClean.DataLayer.PostgreSql
 
             foreach (var column in columns)
             {
-                var columnName = column.GetColumnName(); // Get column name
+                var columnName = GetColumnName(column); // Get column name
                 var columnType = column.GetColumnType(); // Get SQL type
                 var isNullable = column.IsNullable;      // Check nullability
 
@@ -41,7 +41,7 @@ CREATE TEMPORARY TABLE {EncloseDbIdentifier(tableName)} (
         {
             var dbConnection = (Npgsql.NpgsqlConnection)_dbContext.Database.GetDbConnection();
 
-            var copyStatement = $"COPY {EncloseDbIdentifier(tableName)} ({string.Join(",", _entityType.GetProperties().Select(p => EncloseDbIdentifier(p.Name)))}) FROM STDIN (FORMAT BINARY)";
+            var copyStatement = $"COPY {EncloseDbIdentifier(tableName)} ({string.Join(",", _entityType.GetProperties().Select(p => EncloseDbIdentifier(GetColumnName(p))))}) FROM STDIN (FORMAT BINARY)";
 
             using (var writer = await dbConnection.BeginBinaryImportAsync(copyStatement))
             {
@@ -66,7 +66,7 @@ CREATE TEMPORARY TABLE {EncloseDbIdentifier(tableName)} (
                 .GetProperties()
                 .Where(p => !(p.ValueGenerated == ValueGenerated.OnAdd && p.IsPrimaryKey()));
 
-            var copyStatement = $"COPY {EncloseDbIdentifier(GetTableFullName())} ({string.Join(",", entityPropertiesToCopy.Select(p => EncloseDbIdentifier(p.Name)))}) FROM STDIN (FORMAT BINARY)";
+            var copyStatement = $"COPY {GetTableFullName()} ({string.Join(",", entityPropertiesToCopy.Select(p => EncloseDbIdentifier(GetColumnName(p))))}) FROM STDIN (FORMAT BINARY)";
 
             using (var writer = await dbConnection.BeginBinaryImportAsync(copyStatement))
             {
@@ -81,7 +81,7 @@ CREATE TEMPORARY TABLE {EncloseDbIdentifier(tableName)} (
             }
         }
 
-        protected override string EncloseDbIdentifier(string identifier)
+        public override string EncloseDbIdentifier(string identifier)
         {
             return $"\"{identifier}\"";
         }
@@ -113,7 +113,7 @@ CREATE TEMPORARY TABLE {EncloseDbIdentifier(tableName)} (
 
             // When matched, update all columns except the compare columns
             var sql =
-$@"MERGE INTO {EncloseDbIdentifier(GetTableFullName())} tgt
+$@"MERGE INTO {GetTableFullName()} tgt
 USING {EncloseDbIdentifier(tempTableName)} src ON
 {onClauseString}
 {whenMatchedClause}
@@ -135,7 +135,7 @@ WHEN NOT MATCHED THEN
             var onClauseString = GenerateMergeOnClause(compareProperties);
 
             var sql =
-$@"DELETE FROM {EncloseDbIdentifier(GetTableFullName())} tgt
+$@"DELETE FROM {GetTableFullName()} tgt
 WHERE NOT EXISTS (
     SELECT 1 FROM {EncloseDbIdentifier(tempTableName)} src
     WHERE {onClauseString}
@@ -154,7 +154,7 @@ WHERE NOT EXISTS (
             var insertStatement = GenerateMergeInsertStatement();
 
             var sql =
-$@"MERGE INTO {EncloseDbIdentifier(GetTableFullName())} tgt
+$@"MERGE INTO {GetTableFullName()} tgt
 USING {EncloseDbIdentifier(tempTableName)} src ON 
 {onClauseString}
 WHEN NOT MATCHED THEN
