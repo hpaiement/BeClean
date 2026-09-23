@@ -27,7 +27,7 @@ namespace BeClean.DataLayer.Repositories.Bulk
         /// providers without bulk support (e.g. SQLite or InMemory in tests)
         /// </summary>
         /// <exception cref="InvalidOperationException">Bulk operations are not enabled on the db context options</exception>
-        protected IBulkStatementStrategy<TModel, TDbContext> BulkStrategy => _bulkStrategy ??= CreateBulkStrategy();
+        private IBulkStatementStrategy<TModel, TDbContext> BulkStrategy => _bulkStrategy ??= CreateBulkStrategy();
 
         public async Task MergeInsertAsync(
             IEnumerable<TModel> items,
@@ -54,11 +54,16 @@ namespace BeClean.DataLayer.Repositories.Bulk
         public async Task SynchronizeAsync(
             IEnumerable<TModel> items,
             Expression<Func<TModel, object>> compareProperties,
-            Expression<Func<TModel, object>>? dontUpdateColumns = null)
+            Expression<Func<TModel, object>>? dontUpdateColumns = null,
+            Expression<Func<TModel, bool>>? deleteScope = null)
         {
             await ExecuteThroughTempTableAsync(
                 items,
-                tempTableName => BulkStrategy.SynchronizeTempTableAsync(tempTableName, compareProperties, dontUpdateColumns),
+                async tempTableName =>
+                {
+                    await DeleteRowsMissingFromTempTableAsync(tempTableName, compareProperties, deleteScope);
+                    await BulkStrategy.MergeTempTableAsync(tempTableName, compareProperties, dontUpdateColumns);
+                },
                 nameof(SynchronizeAsync));
         }
 
@@ -95,16 +100,14 @@ namespace BeClean.DataLayer.Repositories.Bulk
         }
 
         /// <summary>
-        /// Extension point for custom bulk statements: in a transaction, copies <paramref name="items"/> to a new temp
-        /// table, then runs <paramref name="operation"/> with the temp table name. Use <see cref="BulkStrategy"/> SQL
-        /// helpers (GetTableFullName, GenerateMergeOnClause, ...) to build the statement. The transaction is rolled
-        /// back if the operation throws.
+        /// In a transaction, copies <paramref name="items"/> to a new temp table, then runs <paramref name="operation"/>
+        /// with the temp table name. The transaction is rolled back if the operation throws.
         /// </summary>
         /// <param name="items">Items copied to the temp table</param>
         /// <param name="operation">Statement(s) to run, receives the temp table name</param>
         /// <param name="operationName">Name used in the temp table name, for troubleshooting</param>
         /// <returns></returns>
-        protected async Task ExecuteThroughTempTableAsync(
+        private async Task ExecuteThroughTempTableAsync(
             IEnumerable<TModel> items,
             Func<string, Task> operation,
             string operationName)
@@ -125,6 +128,68 @@ namespace BeClean.DataLayer.Repositories.Bulk
                 await _unitOfWork.RollbackAsync();
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Deletes the table rows matching <paramref name="deleteScope"/> (all rows if null) that have no temp table
+        /// row with the same <paramref name="compareProperties"/> values. Query filters are ignored so they do not
+        /// silently narrow the delete.
+        /// </summary>
+        private async Task DeleteRowsMissingFromTempTableAsync(
+            string tempTableName,
+            Expression<Func<TModel, object>> compareProperties,
+            Expression<Func<TModel, bool>>? deleteScope)
+        {
+            var tempTableSql = "SELECT * FROM " + BulkStrategy.EncloseDbIdentifier(tempTableName);
+            var tempTableRows = _dbSet.FromSqlRaw(tempTableSql).IgnoreQueryFilters();
+
+            var rowsInScope = _dbSet.IgnoreQueryFilters();
+            if (deleteScope != null)
+                rowsInScope = rowsInScope.Where(deleteScope);
+
+            await rowsInScope
+                .Where(HasNoMatchIn(tempTableRows, compareProperties))
+                .ExecuteDeleteAsync();
+        }
+
+        /// <summary>
+        /// Returns tgt => !rows.Any(src => tgt.Col1 == src.Col1 &amp;&amp; tgt.Col2 == src.Col2 ...) for compareProperties
+        /// </summary>
+        private static Expression<Func<TModel, bool>> HasNoMatchIn(
+            IQueryable<TModel> rows,
+            Expression<Func<TModel, object>> compareProperties)
+        {
+            var tgt = Expression.Parameter(typeof(TModel), "tgt");
+            var src = Expression.Parameter(typeof(TModel), "src");
+
+            var matchBody = PropertyExpression.GetProperties(compareProperties)
+                .Select(p => ColumnsMatch(Expression.Property(tgt, p), Expression.Property(src, p)))
+                .Aggregate(Expression.AndAlso);
+            var match = Expression.Lambda<Func<TModel, bool>>(matchBody, src);
+
+            var anyMatch = Expression.Call(
+                typeof(Queryable),
+                nameof(Queryable.Any),
+                [typeof(TModel)],
+                rows.Expression,
+                Expression.Quote(match));
+
+            return Expression.Lambda<Func<TModel, bool>>(Expression.Not(anyMatch), tgt);
+        }
+
+        /// <summary>
+        /// tgt.Col == src.Col with the SQL semantics of the MERGE ON clause: a null value never matches, not even
+        /// another null (EF translates == with C# semantics, null == null being true)
+        /// </summary>
+        private static Expression ColumnsMatch(MemberExpression tgtColumn, MemberExpression srcColumn)
+        {
+            var equal = Expression.Equal(tgtColumn, srcColumn);
+
+            var isNullable = !tgtColumn.Type.IsValueType || Nullable.GetUnderlyingType(tgtColumn.Type) != null;
+            if (!isNullable)
+                return equal;
+
+            return Expression.AndAlso(Expression.NotEqual(tgtColumn, Expression.Constant(null, tgtColumn.Type)), equal);
         }
 
         private IBulkStatementStrategy<TModel, TDbContext> CreateBulkStrategy()
