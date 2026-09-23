@@ -1,28 +1,26 @@
-﻿using Microsoft.EntityFrameworkCore;
+using BeClean.DataLayer.Repositories.Bulk.Strategies;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using System.Linq.Expressions;
 
-namespace BeClean.DataLayer.Repositories.Bulk.Strategies
+namespace BeClean.DataLayer.PostgreSql
 {
     public class PgBulkStrategy<TEntity, TDbContext>(
         TDbContext dbContext
-    ) : BulkStatementStrategy<TEntity, TDbContext>(dbContext)
+    ) : BulkStatementStrategy<TEntity, TDbContext>(dbContext, _providerName)
         where TDbContext : DbContext
     {
         private const string _providerName = "Npgsql.EntityFrameworkCore.PostgreSQL";
 
         public override async Task CreateTempTableAsync(string tableName)
         {
-            if (_dbContext.Database.ProviderName != _providerName)
-                throw new Exception($"{GetType().Name}.{nameof(CreateTempTableAsync)} method cannot be executed because it requires a SQL Server provider");
-
             var columns = _entityType.GetProperties();
 
             var columnDefinitions = new List<string>();
 
             foreach (var column in columns)
             {
-                var columnName = column.GetColumnName(); // Get column name
+                var columnName = GetColumnName(column); // Get column name
                 var columnType = column.GetColumnType(); // Get SQL type
                 var isNullable = column.IsNullable;      // Check nullability
 
@@ -41,12 +39,9 @@ CREATE TEMPORARY TABLE {EncloseDbIdentifier(tableName)} (
         /// <inheritdoc/>
         public override async Task BulkCopyToTempTableAsync(string tableName, IEnumerable<TEntity> items)
         {
-            if (_dbContext.Database.ProviderName != _providerName)
-                throw new Exception($"{GetType().Name}.{nameof(CreateTempTableAsync)} method cannot be executed because it requires a {_providerName} provider");
-
             var dbConnection = (Npgsql.NpgsqlConnection)_dbContext.Database.GetDbConnection();
 
-            var copyStatement = $"COPY {EncloseDbIdentifier(tableName)} ({string.Join(",", _entityType.GetProperties().Select(p => EncloseDbIdentifier(p.Name)))}) FROM STDIN (FORMAT BINARY)";
+            var copyStatement = $"COPY {EncloseDbIdentifier(tableName)} ({string.Join(",", _entityType.GetProperties().Select(p => EncloseDbIdentifier(GetColumnName(p))))}) FROM STDIN (FORMAT BINARY)";
 
             using (var writer = await dbConnection.BeginBinaryImportAsync(copyStatement))
             {
@@ -66,15 +61,12 @@ CREATE TEMPORARY TABLE {EncloseDbIdentifier(tableName)} (
         /// <inheritdoc/>
         public override async Task BulkCopyToDbTableAsync(IEnumerable<TEntity> items)
         {
-            if (_dbContext.Database.ProviderName != _providerName)
-                throw new Exception($"{GetType().Name}.{nameof(CreateTempTableAsync)} method cannot be executed because it requires a {_providerName} provider");
-
             var dbConnection = (Npgsql.NpgsqlConnection)_dbContext.Database.GetDbConnection();
             var entityPropertiesToCopy = _entityType
                 .GetProperties()
                 .Where(p => !(p.ValueGenerated == ValueGenerated.OnAdd && p.IsPrimaryKey()));
 
-            var copyStatement = $"COPY {EncloseDbIdentifier(GetTableFullName())} ({string.Join(",", entityPropertiesToCopy.Select(p => EncloseDbIdentifier(p.Name)))}) FROM STDIN (FORMAT BINARY)";
+            var copyStatement = $"COPY {GetTableFullName()} ({string.Join(",", entityPropertiesToCopy.Select(p => EncloseDbIdentifier(GetColumnName(p))))}) FROM STDIN (FORMAT BINARY)";
 
             using (var writer = await dbConnection.BeginBinaryImportAsync(copyStatement))
             {
@@ -89,7 +81,7 @@ CREATE TEMPORARY TABLE {EncloseDbIdentifier(tableName)} (
             }
         }
 
-        protected override string EncloseDbIdentifier(string identifier)
+        public override string EncloseDbIdentifier(string identifier)
         {
             return $"\"{identifier}\"";
         }
@@ -104,14 +96,7 @@ CREATE TEMPORARY TABLE {EncloseDbIdentifier(tableName)} (
             Expression<Func<TEntity, object>> compareProperties,
             Expression<Func<TEntity, object>>? dontUpdateColumns = null)
         {
-            var comparePropertyNames = GetPropertyNames(compareProperties);
-            var dontUpdatePropertyNames = GetPropertyNames(dontUpdateColumns);
-            var columnNameToUpdate = new List<string>();
-            foreach (var property in _entityType.GetProperties())
-            {
-                if (!(property.ValueGenerated == ValueGenerated.OnAdd && property.IsPrimaryKey()) && !comparePropertyNames.Contains(property.Name) && !dontUpdatePropertyNames.Contains(property.Name))
-                    columnNameToUpdate.Add(property.Name);
-            }
+            var columnNameToUpdate = GetColumnNamesToUpdate(compareProperties, dontUpdateColumns);
 
             return $"UPDATE SET {string.Join(",", columnNameToUpdate.Select(name => $"{EncloseDbIdentifier(name)}=src.{EncloseDbIdentifier(name)}"))}";
         }
@@ -124,18 +109,40 @@ CREATE TEMPORARY TABLE {EncloseDbIdentifier(tableName)} (
         {
             var onClauseString = GenerateMergeOnClause(compareProperties);
             var insertStatement = GenerateMergeInsertStatement();
-            var updateStatement = GenerateMergeUpdateStatement(compareProperties, dontUpdateColumns);
+            var whenMatchedClause = GenerateMergeWhenMatchedClause(compareProperties, dontUpdateColumns);
 
             // When matched, update all columns except the compare columns
             var sql =
-$@"MERGE INTO {EncloseDbIdentifier(GetTableFullName())} tgt
-USING {EncloseDbIdentifier(tempTableName)} src ON 
+$@"MERGE INTO {GetTableFullName()} tgt
+USING {EncloseDbIdentifier(tempTableName)} src ON
 {onClauseString}
-WHEN MATCHED THEN
-{updateStatement}
+{whenMatchedClause}
 WHEN NOT MATCHED THEN
 {insertStatement};";
             await _dbContext.Database.ExecuteSqlRawAsync(sql);
+        }
+
+        /// <summary>
+        /// Override because "WHEN NOT MATCHED BY SOURCE" is only supported since PostgreSQL 17. Rows missing from the
+        /// temp table are deleted first, then remaining rows are merged. Both statements run in the caller's transaction.
+        /// </summary>
+        public override async Task SynchronizeTempTableAsync(
+            string tempTableName,
+            Expression<Func<TEntity, object>> compareProperties,
+            Expression<Func<TEntity, object>>? dontUpdateColumns = null
+        )
+        {
+            var onClauseString = GenerateMergeOnClause(compareProperties);
+
+            var sql =
+$@"DELETE FROM {GetTableFullName()} tgt
+WHERE NOT EXISTS (
+    SELECT 1 FROM {EncloseDbIdentifier(tempTableName)} src
+    WHERE {onClauseString}
+);";
+            await _dbContext.Database.ExecuteSqlRawAsync(sql);
+
+            await MergeTempTableAsync(tempTableName, compareProperties, dontUpdateColumns);
         }
 
         public override async Task MergeInsertTempTableAsync(
@@ -147,7 +154,7 @@ WHEN NOT MATCHED THEN
             var insertStatement = GenerateMergeInsertStatement();
 
             var sql =
-$@"MERGE INTO {EncloseDbIdentifier(GetTableFullName())} tgt
+$@"MERGE INTO {GetTableFullName()} tgt
 USING {EncloseDbIdentifier(tempTableName)} src ON 
 {onClauseString}
 WHEN NOT MATCHED THEN

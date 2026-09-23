@@ -6,7 +6,7 @@ if (!project) {
   throw new Error('RELEASE_PROJECT environment variable is required');
 }
 
-const validProjects = ['Util', 'Repository', 'Localization', 'DataLayer', 'Api', 'TestLib'];
+const validProjects = ['Util', 'Repository', 'Localization', 'DataLayer', 'DataLayer.SqlServer', 'DataLayer.PostgreSql', 'Api', 'TestLib'];
 
 if (!validProjects.includes(project)) {
   throw new Error(`Unknown project: "${project}". Valid values: ${validProjects.join(', ')}`);
