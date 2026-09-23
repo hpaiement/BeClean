@@ -1,4 +1,4 @@
-﻿# BeClean.DataLayer
+# BeClean.DataLayer
 
 Entity Framework Core implementation of the `BeClean.Repository` contracts. Provides generic repositories, a unit of work with savepoint support, and high-performance bulk operations for both SQL Server and PostgreSQL (with the `BeClean.DataLayer.SqlServer` or `BeClean.DataLayer.PostgreSql` package).
 
