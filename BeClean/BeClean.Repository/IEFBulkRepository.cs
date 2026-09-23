@@ -45,7 +45,8 @@ namespace BeClean.Repository
             Expression<Func<TModel, object>>? dontUpdateColumns = null);
 
         /// <summary>
-        /// Insert multiple items with high performance
+        /// Insert multiple items with high performance. Generated keys (e.g. identity columns) are NOT written back to
+        /// <paramref name="items"/>: read the inserted rows from the database if you need them.
         /// </summary>
         /// <param name="items"></param>
         /// <returns></returns>
