@@ -1,35 +1,34 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using System.Linq.Expressions;
+using System.Reflection;
 
 namespace BeClean.DataLayer.Repositories.Bulk.Strategies
 {
-    public abstract class BulkStatementStrategy<TEntity, TDbContext>(
-        TDbContext dbContext
-    ) : IBulkStatementStrategy<TEntity, TDbContext>
+    public abstract class BulkStatementStrategy<TEntity, TDbContext> : IBulkStatementStrategy<TEntity, TDbContext>
         where TDbContext : DbContext
     {
-        protected readonly TDbContext _dbContext = dbContext;
-        protected readonly IEntityType _entityType = dbContext.Model.FindEntityType(typeof(TEntity))
-            ?? throw new Exception($"{nameof(TEntity)} is not a valid model for database {nameof(TDbContext)}");
+        protected readonly TDbContext _dbContext;
+        protected readonly IEntityType _entityType;
 
-        public virtual async Task CreateTempTableAsync(string tableName)
+        /// <param name="dbContext"></param>
+        /// <param name="providerName">EF database provider required by the strategy (see DatabaseFacade.ProviderName)</param>
+        /// <exception cref="NotSupportedException">The db context uses another database provider</exception>
+        protected BulkStatementStrategy(TDbContext dbContext, string providerName)
         {
-            await Task.CompletedTask;
-            throw new NotImplementedException();
+            if (dbContext.Database.ProviderName != providerName)
+                throw new NotSupportedException($"{GetType().Name} requires the {providerName} database provider, but {typeof(TDbContext).Name} uses {dbContext.Database.ProviderName}");
+
+            _dbContext = dbContext;
+            _entityType = dbContext.Model.FindEntityType(typeof(TEntity))
+                ?? throw new Exception($"{typeof(TEntity).Name} is not a valid model for database {typeof(TDbContext).Name}");
         }
 
-        public virtual async Task BulkCopyToTempTableAsync(string tempTableName, IEnumerable<TEntity> items)
-        {
-            await Task.CompletedTask;
-            throw new NotImplementedException();
-        }
+        public abstract Task CreateTempTableAsync(string tableName);
 
-        public virtual async Task BulkCopyToDbTableAsync(IEnumerable<TEntity> items)
-        {
-            await Task.CompletedTask;
-            throw new NotImplementedException();
-        }
+        public abstract Task BulkCopyToTempTableAsync(string tempTableName, IEnumerable<TEntity> items);
+
+        public abstract Task BulkCopyToDbTableAsync(IEnumerable<TEntity> items);
 
         public virtual async Task MergeTempTableAsync(
             string tempTableName,
@@ -39,15 +38,14 @@ namespace BeClean.DataLayer.Repositories.Bulk.Strategies
         {
             var onClauseString = GenerateMergeOnClause(compareProperties);
             var insertStatement = GenerateMergeInsertStatement();
-            var updateStatement = GenerateMergeUpdateStatement(compareProperties, dontUpdateColumns);
+            var whenMatchedClause = GenerateMergeWhenMatchedClause(compareProperties, dontUpdateColumns);
 
             // When matched, update all columns except the compare columns
             var sql =
-$@"MERGE INTO {EncloseDbIdentifier(GetTableFullName())} tgt
-USING {EncloseDbIdentifier(tempTableName)} src ON 
+$@"MERGE INTO {GetTableFullName()} tgt
+USING {EncloseDbIdentifier(tempTableName)} src ON
 {onClauseString}
-WHEN MATCHED THEN
-{updateStatement}
+{whenMatchedClause}
 WHEN NOT MATCHED BY TARGET THEN
 {insertStatement};";
             await _dbContext.Database.ExecuteSqlRawAsync(sql);
@@ -62,12 +60,58 @@ WHEN NOT MATCHED BY TARGET THEN
             var insertStatement = GenerateMergeInsertStatement();
 
             var sql = 
-$@"MERGE INTO {EncloseDbIdentifier(GetTableFullName())} tgt
+$@"MERGE INTO {GetTableFullName()} tgt
 USING {EncloseDbIdentifier(tempTableName)} src ON 
 {onClauseString}
 WHEN NOT MATCHED BY TARGET THEN
 {insertStatement};";
 
+            await _dbContext.Database.ExecuteSqlRawAsync(sql);
+        }
+
+        public virtual async Task MergeUpdateTempTableAsync(
+            string tempTableName,
+            Expression<Func<TEntity, object>> compareProperties,
+            Expression<Func<TEntity, object>>? dontUpdateColumns = null
+        )
+        {
+            var whenMatchedClause = GenerateMergeWhenMatchedClause(compareProperties, dontUpdateColumns);
+
+            // Nothing to update (a MERGE statement without WHEN clause is a syntax error)
+            if (whenMatchedClause == "")
+                return;
+
+            var onClauseString = GenerateMergeOnClause(compareProperties);
+
+            var sql =
+$@"MERGE INTO {GetTableFullName()} tgt
+USING {EncloseDbIdentifier(tempTableName)} src ON
+{onClauseString}
+{whenMatchedClause};";
+            await _dbContext.Database.ExecuteSqlRawAsync(sql);
+        }
+
+        public virtual async Task SynchronizeTempTableAsync(
+            string tempTableName,
+            Expression<Func<TEntity, object>> compareProperties,
+            Expression<Func<TEntity, object>>? dontUpdateColumns = null
+        )
+        {
+            var onClauseString = GenerateMergeOnClause(compareProperties);
+            var insertStatement = GenerateMergeInsertStatement();
+            var whenMatchedClause = GenerateMergeWhenMatchedClause(compareProperties, dontUpdateColumns);
+
+            // When matched, update all columns except the compare columns
+            var sql =
+$@"MERGE INTO {GetTableFullName()} tgt
+USING {EncloseDbIdentifier(tempTableName)} src ON
+{onClauseString}
+{whenMatchedClause}
+WHEN NOT MATCHED BY TARGET THEN
+{insertStatement}
+WHEN NOT MATCHED BY SOURCE THEN
+DELETE;
+";
             await _dbContext.Database.ExecuteSqlRawAsync(sql);
         }
 
@@ -78,7 +122,7 @@ WHEN NOT MATCHED BY TARGET THEN
         /// <param name="compareProperties"></param>
         /// <returns></returns>
         /// <exception cref="InvalidOperationException"></exception>
-        protected string GenerateMergeOnClause(Expression<Func<TEntity, object>> compareProperties)
+        public string GenerateMergeOnClause(Expression<Func<TEntity, object>> compareProperties)
         {
             var comparePropertyNames = GetPropertyNames(compareProperties);
 
@@ -91,9 +135,7 @@ WHEN NOT MATCHED BY TARGET THEN
                 if (property == null)
                     throw new InvalidOperationException($"Property '{propertyName}' not found in the entity {typeof(TEntity).Name}.");
 
-                var columnName = property.GetColumnName(StoreObjectIdentifier.Table(_entityType.GetTableName()!, _entityType.GetSchema()));
-                if (string.IsNullOrEmpty(columnName))
-                    throw new InvalidOperationException($"Column name not found for property '{propertyName}'.");
+                var columnName = GetColumnName(property);
 
                 // Add the comparison to the ON clause
                 onClauses.Add($"tgt.{EncloseDbIdentifier(columnName)} = src.{EncloseDbIdentifier(columnName)}");
@@ -106,13 +148,13 @@ WHEN NOT MATCHED BY TARGET THEN
         /// Returns a string containing an INSERT statement with all columns of the table
         /// </summary>
         /// <returns></returns>
-        protected string GenerateMergeInsertStatement()
+        public string GenerateMergeInsertStatement()
         {
             var columnNameToInsert = new List<string>();
             foreach (var property in _entityType.GetProperties())
             {
                 if (!(property.ValueGenerated == ValueGenerated.OnAdd && property.IsPrimaryKey()))
-                    columnNameToInsert.Add(property.Name);
+                    columnNameToInsert.Add(GetColumnName(property));
             }
 
             return $"INSERT ({string.Join(",", columnNameToInsert.Select(EncloseDbIdentifier))}) VALUES ({string.Join(",", columnNameToInsert.Select(name => $"src.{EncloseDbIdentifier(name)}"))})";
@@ -130,16 +172,49 @@ WHEN NOT MATCHED BY TARGET THEN
             Expression<Func<TEntity, object>> compareProperties,
             Expression<Func<TEntity, object>>? dontUpdateColumns = null)
         {
+            var columnNameToUpdate = GetColumnNamesToUpdate(compareProperties, dontUpdateColumns);
+
+            return $"UPDATE SET {string.Join(",", columnNameToUpdate.Select(name => $"tgt.{EncloseDbIdentifier(name)}=src.{EncloseDbIdentifier(name)}"))}";
+        }
+
+        /// <summary>
+        /// Returns the MERGE "WHEN MATCHED THEN UPDATE ..." clause, or an empty string when there is no column left
+        /// to update (an empty "UPDATE SET" is a syntax error)
+        /// </summary>
+        /// <param name="compareProperties"></param>
+        /// <param name="dontUpdateColumns"></param>
+        /// <returns></returns>
+        public string GenerateMergeWhenMatchedClause(
+            Expression<Func<TEntity, object>> compareProperties,
+            Expression<Func<TEntity, object>>? dontUpdateColumns = null)
+        {
+            if (!GetColumnNamesToUpdate(compareProperties, dontUpdateColumns).Any())
+                return "";
+
+            return $"WHEN MATCHED THEN\n{GenerateMergeUpdateStatement(compareProperties, dontUpdateColumns)}";
+        }
+
+        /// <summary>
+        /// Returns all table columns except for those specified in dontUpdateColumns, those used for merge compare
+        /// (compareProperties) and generated primary keys
+        /// </summary>
+        /// <param name="compareProperties"></param>
+        /// <param name="dontUpdateColumns"></param>
+        /// <returns></returns>
+        protected List<string> GetColumnNamesToUpdate(
+            Expression<Func<TEntity, object>> compareProperties,
+            Expression<Func<TEntity, object>>? dontUpdateColumns = null)
+        {
             var comparePropertyNames = GetPropertyNames(compareProperties);
             var dontUpdatePropertyNames = GetPropertyNames(dontUpdateColumns);
             var columnNameToUpdate = new List<string>();
             foreach (var property in _entityType.GetProperties())
             {
                 if (!(property.ValueGenerated == ValueGenerated.OnAdd && property.IsPrimaryKey()) && !comparePropertyNames.Contains(property.Name) && !dontUpdatePropertyNames.Contains(property.Name))
-                    columnNameToUpdate.Add(property.Name);
+                    columnNameToUpdate.Add(GetColumnName(property));
             }
 
-            return $"UPDATE SET {string.Join(",", columnNameToUpdate.Select(name => $"tgt.{EncloseDbIdentifier(name)}=src.{EncloseDbIdentifier(name)}"))}";
+            return columnNameToUpdate;
         }
 
         public virtual string GetTempTableName(string baseName) => baseName;
@@ -148,9 +223,24 @@ WHEN NOT MATCHED BY TARGET THEN
         {
             // Get the schema and table name
             var schema = _entityType.GetSchema();
-            var tableName = _entityType.GetTableName();
+            var tableName = EncloseDbIdentifier(_entityType.GetTableName()!);
 
-            return schema != null ? $"{schema}.{tableName!}" : $"{tableName!}";
+            return schema != null ? $"{EncloseDbIdentifier(schema)}.{tableName}" : tableName;
+        }
+
+        /// <summary>
+        /// Returns the table column name of an entity property (may differ from the property name, see HasColumnName)
+        /// </summary>
+        /// <param name="property"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
+        protected string GetColumnName(IProperty property)
+        {
+            var columnName = property.GetColumnName(StoreObjectIdentifier.Table(_entityType.GetTableName()!, _entityType.GetSchema()));
+            if (string.IsNullOrEmpty(columnName))
+                throw new InvalidOperationException($"Column name not found for property '{property.Name}'.");
+
+            return columnName;
         }
 
         /// <summary>
@@ -162,7 +252,7 @@ WHEN NOT MATCHED BY TARGET THEN
         /// </summary>
         /// <param name="identifier"></param>
         /// <returns></returns>
-        protected virtual string EncloseDbIdentifier(string identifier)
+        public virtual string EncloseDbIdentifier(string identifier)
         {
             return identifier;
         }
@@ -175,19 +265,25 @@ WHEN NOT MATCHED BY TARGET THEN
         /// <exception cref="Exception"></exception>
         protected IEnumerable<string> GetPropertyNames(Expression<Func<TEntity, object>>? propertyExpression)
         {
-            if (propertyExpression == null)
-                return Enumerable.Empty<string>();
+            return GetProperties(propertyExpression).Select(p => p.Name);
+        }
 
-            IEnumerable<string> comparePropertyNames;
+        protected IEnumerable<PropertyInfo> GetProperties(Expression<Func<TEntity, object>>? propertyExpression)
+        {
+            if (propertyExpression == null)
+                return Enumerable.Empty<PropertyInfo>();
+
+            IEnumerable<PropertyInfo> compareProperty;
             if (propertyExpression.Body is NewExpression newExpression && newExpression.Members != null)
             {
                 // Anonymous object with multiple properties
-                comparePropertyNames = newExpression.Members.Select(m => m.Name).ToList();
+                //compareProperty = newExpression.Members.Select(m => (PropertyInfo)m).ToList();
+                compareProperty = newExpression.Arguments.Select(a => (MemberExpression)a).Select(m => (PropertyInfo)m.Member).ToList();
             }
             else if (propertyExpression.Body is MemberExpression memberExpression)
             {
                 // Single property (e.g., x => x.Col1)
-                comparePropertyNames = new List<string> { memberExpression.Member.Name };
+                compareProperty = new List<PropertyInfo> { (PropertyInfo)memberExpression.Member };
             }
             else if (
                 propertyExpression.Body is UnaryExpression unaryExpression &&
@@ -195,13 +291,15 @@ WHEN NOT MATCHED BY TARGET THEN
                 unaryExpression.Operand is MemberExpression unaryMemberExpression)
             {
                 // Handles boxing for object (e.g., x => (object)x.PrimaryId)
-                comparePropertyNames = new List<string> { unaryMemberExpression.Member.Name };
+                compareProperty = new List<PropertyInfo> { (PropertyInfo)unaryMemberExpression.Member };
             }
             else
                 throw new Exception("compareProperties property format not supported");
 
-            return comparePropertyNames;
+            return compareProperty;
         }
 
     }
+
+
 }

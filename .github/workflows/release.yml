@@ -76,6 +76,22 @@ jobs:
           source .github/scripts/detect_version.sh
           detect_version DataLayer BeClean/BeClean.DataLayer
 
+      - name: Determine DataLayer.SqlServer version
+        id: datalayer_sqlserver
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          source .github/scripts/detect_version.sh
+          detect_version DataLayer.SqlServer BeClean/BeClean.DataLayer.SqlServer
+
+      - name: Determine DataLayer.PostgreSql version
+        id: datalayer_postgresql
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          source .github/scripts/detect_version.sh
+          detect_version DataLayer.PostgreSql BeClean/BeClean.DataLayer.PostgreSql
+
       - name: Determine Api version
         id: api
         env:
@@ -93,6 +109,8 @@ jobs:
           steps.localization.outputs.version != '' ||
           steps.testlib.outputs.version != '' ||
           steps.datalayer.outputs.version != '' ||
+          steps.datalayer_sqlserver.outputs.version != '' ||
+          steps.datalayer_postgresql.outputs.version != '' ||
           steps.api.outputs.version != ''
         env:
           UTIL_VERSION:         ${{ steps.util.outputs.version }}
@@ -100,6 +118,8 @@ jobs:
           LOCALIZATION_VERSION: ${{ steps.localization.outputs.version }}
           TESTLIB_VERSION:      ${{ steps.testlib.outputs.version }}
           DATALAYER_VERSION:    ${{ steps.datalayer.outputs.version }}
+          DATALAYER_SQLSERVER_VERSION:  ${{ steps.datalayer_sqlserver.outputs.version }}
+          DATALAYER_POSTGRESQL_VERSION: ${{ steps.datalayer_postgresql.outputs.version }}
           API_VERSION:          ${{ steps.api.outputs.version }}
           NUGET_API_KEY:        ${{ secrets.NUGET_API_KEY }}
         run: |
@@ -125,6 +145,8 @@ jobs:
           [ -n "$LOCALIZATION_VERSION" ] && update_version BeClean/BeClean.Localization/BeClean.Localization.csproj                   "$LOCALIZATION_VERSION"
           [ -n "$TESTLIB_VERSION" ]      && update_version BeClean/BeClean.TestLib/BeClean.TestLib.csproj                             "$TESTLIB_VERSION"
           [ -n "$DATALAYER_VERSION" ]    && update_version BeClean/BeClean.DataLayer/BeClean.DataLayer.csproj                         "$DATALAYER_VERSION"
+          [ -n "$DATALAYER_SQLSERVER_VERSION" ]  && update_version BeClean/BeClean.DataLayer.SqlServer/BeClean.DataLayer.SqlServer.csproj   "$DATALAYER_SQLSERVER_VERSION"
+          [ -n "$DATALAYER_POSTGRESQL_VERSION" ] && update_version BeClean/BeClean.DataLayer.PostgreSql/BeClean.DataLayer.PostgreSql.csproj "$DATALAYER_POSTGRESQL_VERSION"
           [ -n "$API_VERSION" ]          && update_version BeClean/BeClean.Api/BeClean.Api.csproj                                     "$API_VERSION"
 
           # ── Build commit message ─────────────────────────────────────────
@@ -134,6 +156,8 @@ jobs:
           [ -n "$LOCALIZATION_VERSION" ] && PARTS+=("Localization $LOCALIZATION_VERSION")
           [ -n "$TESTLIB_VERSION" ]      && PARTS+=("TestLib $TESTLIB_VERSION")
           [ -n "$DATALAYER_VERSION" ]    && PARTS+=("DataLayer $DATALAYER_VERSION")
+          [ -n "$DATALAYER_SQLSERVER_VERSION" ]  && PARTS+=("DataLayer.SqlServer $DATALAYER_SQLSERVER_VERSION")
+          [ -n "$DATALAYER_POSTGRESQL_VERSION" ] && PARTS+=("DataLayer.PostgreSql $DATALAYER_POSTGRESQL_VERSION")
           [ -n "$API_VERSION" ]          && PARTS+=("Api $API_VERSION")
           MSG=$(IFS=', '; echo "${PARTS[*]}")
 
@@ -144,6 +168,8 @@ jobs:
             BeClean/BeClean.Localization/BeClean.Localization.csproj \
             BeClean/BeClean.TestLib/BeClean.TestLib.csproj \
             BeClean/BeClean.DataLayer/BeClean.DataLayer.csproj \
+            BeClean/BeClean.DataLayer.SqlServer/BeClean.DataLayer.SqlServer.csproj \
+            BeClean/BeClean.DataLayer.PostgreSql/BeClean.DataLayer.PostgreSql.csproj \
             BeClean/BeClean.Api/BeClean.Api.csproj
           git commit -m "chore(release): $MSG [skip ci]"
           git push
@@ -154,6 +180,8 @@ jobs:
           [ -n "$LOCALIZATION_VERSION" ] && git tag "Localization$LOCALIZATION_VERSION"
           [ -n "$TESTLIB_VERSION" ]      && git tag "TestLib$TESTLIB_VERSION"
           [ -n "$DATALAYER_VERSION" ]    && git tag "DataLayer$DATALAYER_VERSION"
+          [ -n "$DATALAYER_SQLSERVER_VERSION" ]  && git tag "DataLayer.SqlServer$DATALAYER_SQLSERVER_VERSION"
+          [ -n "$DATALAYER_POSTGRESQL_VERSION" ] && git tag "DataLayer.PostgreSql$DATALAYER_POSTGRESQL_VERSION"
           [ -n "$API_VERSION" ]          && git tag "Api$API_VERSION"
           git push --tags
 
@@ -163,4 +191,6 @@ jobs:
           [ -n "$LOCALIZATION_VERSION" ] && pack_and_push BeClean/BeClean.Localization/BeClean.Localization.csproj Localization
           [ -n "$TESTLIB_VERSION" ]      && pack_and_push BeClean/BeClean.TestLib/BeClean.TestLib.csproj           TestLib
           [ -n "$DATALAYER_VERSION" ]    && pack_and_push BeClean/BeClean.DataLayer/BeClean.DataLayer.csproj       DataLayer
+          [ -n "$DATALAYER_SQLSERVER_VERSION" ]  && pack_and_push BeClean/BeClean.DataLayer.SqlServer/BeClean.DataLayer.SqlServer.csproj   DataLayer.SqlServer
+          [ -n "$DATALAYER_POSTGRESQL_VERSION" ] && pack_and_push BeClean/BeClean.DataLayer.PostgreSql/BeClean.DataLayer.PostgreSql.csproj DataLayer.PostgreSql
           [ -n "$API_VERSION" ]          && pack_and_push BeClean/BeClean.Api/BeClean.Api.csproj                   Api

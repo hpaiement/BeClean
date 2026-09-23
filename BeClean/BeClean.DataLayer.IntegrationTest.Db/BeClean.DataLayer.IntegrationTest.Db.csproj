@@ -13,7 +13,6 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.5" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
     <PackageReference Include="System.Data.SqlClient" Version="4.9.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
@@ -25,7 +24,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BeClean.DataLayer\BeClean.DataLayer.csproj" />
+    <ProjectReference Include="..\BeClean.DataLayer.PostgreSql\BeClean.DataLayer.PostgreSql.csproj" />
+    <ProjectReference Include="..\BeClean.DataLayer.SqlServer\BeClean.DataLayer.SqlServer.csproj" />
     <ProjectReference Include="..\BeClean.TestLib\BeClean.TestLib.csproj" />
   </ItemGroup>
 
