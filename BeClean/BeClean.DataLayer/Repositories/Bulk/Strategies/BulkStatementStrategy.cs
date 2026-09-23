@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using System.Linq.Expressions;
-using System.Reflection;
 
 namespace BeClean.DataLayer.Repositories.Bulk.Strategies
 {
@@ -91,30 +90,6 @@ USING {EncloseDbIdentifier(tempTableName)} src ON
             await _dbContext.Database.ExecuteSqlRawAsync(sql);
         }
 
-        public virtual async Task SynchronizeTempTableAsync(
-            string tempTableName,
-            Expression<Func<TEntity, object>> compareProperties,
-            Expression<Func<TEntity, object>>? dontUpdateColumns = null
-        )
-        {
-            var onClauseString = GenerateMergeOnClause(compareProperties);
-            var insertStatement = GenerateMergeInsertStatement();
-            var whenMatchedClause = GenerateMergeWhenMatchedClause(compareProperties, dontUpdateColumns);
-
-            // When matched, update all columns except the compare columns
-            var sql =
-$@"MERGE INTO {GetTableFullName()} tgt
-USING {EncloseDbIdentifier(tempTableName)} src ON
-{onClauseString}
-{whenMatchedClause}
-WHEN NOT MATCHED BY TARGET THEN
-{insertStatement}
-WHEN NOT MATCHED BY SOURCE THEN
-DELETE;
-";
-            await _dbContext.Database.ExecuteSqlRawAsync(sql);
-        }
-
         /// <summary>
         /// Returns a string representing the MERGE "ON" clause. Example:
         /// "tgt.CarId = src.CarId AND tgt.CarColorId = src.CarColorId"
@@ -122,7 +97,7 @@ DELETE;
         /// <param name="compareProperties"></param>
         /// <returns></returns>
         /// <exception cref="InvalidOperationException"></exception>
-        public string GenerateMergeOnClause(Expression<Func<TEntity, object>> compareProperties)
+        protected string GenerateMergeOnClause(Expression<Func<TEntity, object>> compareProperties)
         {
             var comparePropertyNames = GetPropertyNames(compareProperties);
 
@@ -148,7 +123,7 @@ DELETE;
         /// Returns a string containing an INSERT statement with all columns of the table
         /// </summary>
         /// <returns></returns>
-        public string GenerateMergeInsertStatement()
+        protected string GenerateMergeInsertStatement()
         {
             var columnNameToInsert = new List<string>();
             foreach (var property in _entityType.GetProperties())
@@ -184,7 +159,7 @@ DELETE;
         /// <param name="compareProperties"></param>
         /// <param name="dontUpdateColumns"></param>
         /// <returns></returns>
-        public string GenerateMergeWhenMatchedClause(
+        protected string GenerateMergeWhenMatchedClause(
             Expression<Func<TEntity, object>> compareProperties,
             Expression<Func<TEntity, object>>? dontUpdateColumns = null)
         {
@@ -219,7 +194,7 @@ DELETE;
 
         public virtual string GetTempTableName(string baseName) => baseName;
 
-        public virtual string GetTableFullName()
+        protected virtual string GetTableFullName()
         {
             // Get the schema and table name
             var schema = _entityType.GetSchema();
@@ -265,38 +240,7 @@ DELETE;
         /// <exception cref="Exception"></exception>
         protected IEnumerable<string> GetPropertyNames(Expression<Func<TEntity, object>>? propertyExpression)
         {
-            return GetProperties(propertyExpression).Select(p => p.Name);
-        }
-
-        protected IEnumerable<PropertyInfo> GetProperties(Expression<Func<TEntity, object>>? propertyExpression)
-        {
-            if (propertyExpression == null)
-                return Enumerable.Empty<PropertyInfo>();
-
-            IEnumerable<PropertyInfo> compareProperty;
-            if (propertyExpression.Body is NewExpression newExpression && newExpression.Members != null)
-            {
-                // Anonymous object with multiple properties
-                //compareProperty = newExpression.Members.Select(m => (PropertyInfo)m).ToList();
-                compareProperty = newExpression.Arguments.Select(a => (MemberExpression)a).Select(m => (PropertyInfo)m.Member).ToList();
-            }
-            else if (propertyExpression.Body is MemberExpression memberExpression)
-            {
-                // Single property (e.g., x => x.Col1)
-                compareProperty = new List<PropertyInfo> { (PropertyInfo)memberExpression.Member };
-            }
-            else if (
-                propertyExpression.Body is UnaryExpression unaryExpression &&
-                unaryExpression.NodeType == ExpressionType.Convert &&
-                unaryExpression.Operand is MemberExpression unaryMemberExpression)
-            {
-                // Handles boxing for object (e.g., x => (object)x.PrimaryId)
-                compareProperty = new List<PropertyInfo> { (PropertyInfo)unaryMemberExpression.Member };
-            }
-            else
-                throw new Exception("compareProperties property format not supported");
-
-            return compareProperty;
+            return PropertyExpression.GetProperties(propertyExpression).Select(p => p.Name);
         }
 
     }

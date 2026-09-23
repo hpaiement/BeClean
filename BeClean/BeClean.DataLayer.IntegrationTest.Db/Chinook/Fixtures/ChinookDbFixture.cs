@@ -40,6 +40,9 @@ namespace BeClean.DataLayer.IntegrationTest.Db.Chinook.Fixtures
         public RepositoryScope<ArtistRepository> CreateArtistScope() => new(CreateDbContext(), (dbContext, unitOfWork) => new ArtistRepository(dbContext, unitOfWork));
 
         /// <inheritdoc cref="CreateArtistScope"/>
+        public RepositoryScope<AlbumRepository> CreateAlbumScope() => new(CreateDbContext(), (dbContext, unitOfWork) => new AlbumRepository(dbContext, unitOfWork));
+
+        /// <inheritdoc cref="CreateArtistScope"/>
         public RepositoryScope<MappedItemRepository> CreateMappedItemScope() => new(CreateDbContext(), (dbContext, unitOfWork) => new MappedItemRepository(dbContext, unitOfWork));
 
         /// <summary>

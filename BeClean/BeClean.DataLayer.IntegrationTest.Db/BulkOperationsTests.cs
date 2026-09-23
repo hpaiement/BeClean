@@ -19,6 +19,7 @@ namespace BeClean.DataLayer.IntegrationTest.Db
         protected abstract ChinookDbFixture CreateDbFixture(bool useBeCleanBulk = true);
 
         private readonly ArtistBuilder _artistBuilder = new BuilderCollection().GetBuilder<ArtistBuilder>();
+        private readonly AlbumBuilder _albumBuilder = new BuilderCollection().GetBuilder<AlbumBuilder>();
 
         [Fact]
         public async Task MergeAsync_Should_InsertMissingRows()
@@ -177,6 +178,36 @@ namespace BeClean.DataLayer.IntegrationTest.Db
         }
 
         [Fact]
+        public async Task SynchronizeAsync_WithDeleteScopeOnNavigationProperty_Should_OnlyDeleteMissingRowsInScope()
+        {
+            // Arrange
+            using var db = CreateDbFixture();
+            await InsertArtistsAsync(db, (1, "OutOfScope"), (2, "InScope"));
+            await InsertAlbumsAsync(db,
+                _albumBuilder.WithIdentity(10).WithArtist(1).WithTitle("OutOfScope").Build(),
+                _albumBuilder.WithIdentity(20).WithArtist(2).WithTitle("Missing").Build(),
+                _albumBuilder.WithIdentity(21).WithArtist(2).WithTitle("Existing").Build());
+            using var scope = db.CreateAlbumScope();
+
+            // Act
+            await scope.Repository.SynchronizeAsync(new List<Album>
+            {
+                _albumBuilder.WithIdentity(21).WithArtist(2).WithTitle("Renamed").Build(),
+                _albumBuilder.WithIdentity(22).WithArtist(2).WithTitle("Inserted").Build(),
+            },
+            a => a.AlbumId,
+            deleteScope: a => a.Artist.Name == "InScope");
+
+            // Assert
+            using var assertScope = db.CreateAlbumScope();
+            var dbItems = (await assertScope.Repository.GetAllAsync()).OrderBy(a => a.AlbumId);
+            Assert.Collection(dbItems,
+                a => { Assert.Equal(10, a.AlbumId); Assert.Equal("OutOfScope", a.Title); },
+                a => { Assert.Equal(21, a.AlbumId); Assert.Equal("Renamed", a.Title); },
+                a => { Assert.Equal(22, a.AlbumId); Assert.Equal("Inserted", a.Title); });
+        }
+
+        [Fact]
         public async Task SynchronizeAsync_WhenDeleteViolatesForeignKey_Should_ThrowAndRollback()
         {
             // Arrange: Chinook artists are referenced by albums, deleting them violates FK_AlbumArtistId
@@ -290,6 +321,12 @@ namespace BeClean.DataLayer.IntegrationTest.Db
             await scope.Repository.BulkInsertAsync(artists
                 .Select(a => _artistBuilder.WithIdentity(a.Id).WithName(a.Name).Build())
                 .ToList());
+        }
+
+        private static async Task InsertAlbumsAsync(ChinookDbFixture db, params Album[] albums)
+        {
+            using var scope = db.CreateAlbumScope();
+            await scope.Repository.BulkInsertAsync(albums);
         }
     }
 

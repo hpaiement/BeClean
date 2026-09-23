@@ -15,6 +15,7 @@ namespace BeClean.DataLayer.IntegrationTest.Db.Chinook
             var servicesCollection = new ServiceCollection();
 
             servicesCollection.AddSingleton<ArtistBuilder>();
+            servicesCollection.AddSingleton<AlbumBuilder>();
             servicesCollection.AddSingleton<MappedItemBuilder>();
 
             _serviceProvider = servicesCollection.BuildServiceProvider();
