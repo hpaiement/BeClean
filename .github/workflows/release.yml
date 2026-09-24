@@ -140,25 +140,25 @@ jobs:
           }
 
           # ── Update csproj files ──────────────────────────────────────────
-          [ -n "$UTIL_VERSION" ]         && update_version BeClean/BeClean.Util/BeClean.Util.csproj                                   "$UTIL_VERSION"
-          [ -n "$REPOSITORY_VERSION" ]   && update_version BeClean/BeClean.Repository/BeClean.Repository.csproj                       "$REPOSITORY_VERSION"
-          [ -n "$LOCALIZATION_VERSION" ] && update_version BeClean/BeClean.Localization/BeClean.Localization.csproj                   "$LOCALIZATION_VERSION"
-          [ -n "$TESTLIB_VERSION" ]      && update_version BeClean/BeClean.TestLib/BeClean.TestLib.csproj                             "$TESTLIB_VERSION"
-          [ -n "$DATALAYER_VERSION" ]    && update_version BeClean/BeClean.DataLayer/BeClean.DataLayer.csproj                         "$DATALAYER_VERSION"
-          [ -n "$DATALAYER_SQLSERVER_VERSION" ]  && update_version BeClean/BeClean.DataLayer.SqlServer/BeClean.DataLayer.SqlServer.csproj   "$DATALAYER_SQLSERVER_VERSION"
-          [ -n "$DATALAYER_POSTGRESQL_VERSION" ] && update_version BeClean/BeClean.DataLayer.PostgreSql/BeClean.DataLayer.PostgreSql.csproj "$DATALAYER_POSTGRESQL_VERSION"
-          [ -n "$API_VERSION" ]          && update_version BeClean/BeClean.Api/BeClean.Api.csproj                                     "$API_VERSION"
+          [ -z "$UTIL_VERSION" ]         || update_version BeClean/BeClean.Util/BeClean.Util.csproj                                   "$UTIL_VERSION"
+          [ -z "$REPOSITORY_VERSION" ]   || update_version BeClean/BeClean.Repository/BeClean.Repository.csproj                       "$REPOSITORY_VERSION"
+          [ -z "$LOCALIZATION_VERSION" ] || update_version BeClean/BeClean.Localization/BeClean.Localization.csproj                   "$LOCALIZATION_VERSION"
+          [ -z "$TESTLIB_VERSION" ]      || update_version BeClean/BeClean.TestLib/BeClean.TestLib.csproj                             "$TESTLIB_VERSION"
+          [ -z "$DATALAYER_VERSION" ]    || update_version BeClean/BeClean.DataLayer/BeClean.DataLayer.csproj                         "$DATALAYER_VERSION"
+          [ -z "$DATALAYER_SQLSERVER_VERSION" ]  || update_version BeClean/BeClean.DataLayer.SqlServer/BeClean.DataLayer.SqlServer.csproj   "$DATALAYER_SQLSERVER_VERSION"
+          [ -z "$DATALAYER_POSTGRESQL_VERSION" ] || update_version BeClean/BeClean.DataLayer.PostgreSql/BeClean.DataLayer.PostgreSql.csproj "$DATALAYER_POSTGRESQL_VERSION"
+          [ -z "$API_VERSION" ]          || update_version BeClean/BeClean.Api/BeClean.Api.csproj                                     "$API_VERSION"
 
           # ── Build commit message ─────────────────────────────────────────
           PARTS=()
-          [ -n "$UTIL_VERSION" ]         && PARTS+=("Util $UTIL_VERSION")
-          [ -n "$REPOSITORY_VERSION" ]   && PARTS+=("Repository $REPOSITORY_VERSION")
-          [ -n "$LOCALIZATION_VERSION" ] && PARTS+=("Localization $LOCALIZATION_VERSION")
-          [ -n "$TESTLIB_VERSION" ]      && PARTS+=("TestLib $TESTLIB_VERSION")
-          [ -n "$DATALAYER_VERSION" ]    && PARTS+=("DataLayer $DATALAYER_VERSION")
-          [ -n "$DATALAYER_SQLSERVER_VERSION" ]  && PARTS+=("DataLayer.SqlServer $DATALAYER_SQLSERVER_VERSION")
-          [ -n "$DATALAYER_POSTGRESQL_VERSION" ] && PARTS+=("DataLayer.PostgreSql $DATALAYER_POSTGRESQL_VERSION")
-          [ -n "$API_VERSION" ]          && PARTS+=("Api $API_VERSION")
+          [ -z "$UTIL_VERSION" ]         || PARTS+=("Util $UTIL_VERSION")
+          [ -z "$REPOSITORY_VERSION" ]   || PARTS+=("Repository $REPOSITORY_VERSION")
+          [ -z "$LOCALIZATION_VERSION" ] || PARTS+=("Localization $LOCALIZATION_VERSION")
+          [ -z "$TESTLIB_VERSION" ]      || PARTS+=("TestLib $TESTLIB_VERSION")
+          [ -z "$DATALAYER_VERSION" ]    || PARTS+=("DataLayer $DATALAYER_VERSION")
+          [ -z "$DATALAYER_SQLSERVER_VERSION" ]  || PARTS+=("DataLayer.SqlServer $DATALAYER_SQLSERVER_VERSION")
+          [ -z "$DATALAYER_POSTGRESQL_VERSION" ] || PARTS+=("DataLayer.PostgreSql $DATALAYER_POSTGRESQL_VERSION")
+          [ -z "$API_VERSION" ]          || PARTS+=("Api $API_VERSION")
           MSG=$(IFS=', '; echo "${PARTS[*]}")
 
           # ── Commit and push ──────────────────────────────────────────────
@@ -175,22 +175,22 @@ jobs:
           git push
 
           # ── Create and push version tags (all on this commit) ────────────
-          [ -n "$UTIL_VERSION" ]         && git tag "Util$UTIL_VERSION"
-          [ -n "$REPOSITORY_VERSION" ]   && git tag "Repository$REPOSITORY_VERSION"
-          [ -n "$LOCALIZATION_VERSION" ] && git tag "Localization$LOCALIZATION_VERSION"
-          [ -n "$TESTLIB_VERSION" ]      && git tag "TestLib$TESTLIB_VERSION"
-          [ -n "$DATALAYER_VERSION" ]    && git tag "DataLayer$DATALAYER_VERSION"
-          [ -n "$DATALAYER_SQLSERVER_VERSION" ]  && git tag "DataLayer.SqlServer$DATALAYER_SQLSERVER_VERSION"
-          [ -n "$DATALAYER_POSTGRESQL_VERSION" ] && git tag "DataLayer.PostgreSql$DATALAYER_POSTGRESQL_VERSION"
-          [ -n "$API_VERSION" ]          && git tag "Api$API_VERSION"
+          [ -z "$UTIL_VERSION" ]         || git tag "Util$UTIL_VERSION"
+          [ -z "$REPOSITORY_VERSION" ]   || git tag "Repository$REPOSITORY_VERSION"
+          [ -z "$LOCALIZATION_VERSION" ] || git tag "Localization$LOCALIZATION_VERSION"
+          [ -z "$TESTLIB_VERSION" ]      || git tag "TestLib$TESTLIB_VERSION"
+          [ -z "$DATALAYER_VERSION" ]    || git tag "DataLayer$DATALAYER_VERSION"
+          [ -z "$DATALAYER_SQLSERVER_VERSION" ]  || git tag "DataLayer.SqlServer$DATALAYER_SQLSERVER_VERSION"
+          [ -z "$DATALAYER_POSTGRESQL_VERSION" ] || git tag "DataLayer.PostgreSql$DATALAYER_POSTGRESQL_VERSION"
+          [ -z "$API_VERSION" ]          || git tag "Api$API_VERSION"
           git push --tags
 
           # ── Pack and publish to NuGet.org ────────────────────────────────
-          [ -n "$UTIL_VERSION" ]         && pack_and_push BeClean/BeClean.Util/BeClean.Util.csproj                 Util
-          [ -n "$REPOSITORY_VERSION" ]   && pack_and_push BeClean/BeClean.Repository/BeClean.Repository.csproj     Repository
-          [ -n "$LOCALIZATION_VERSION" ] && pack_and_push BeClean/BeClean.Localization/BeClean.Localization.csproj Localization
-          [ -n "$TESTLIB_VERSION" ]      && pack_and_push BeClean/BeClean.TestLib/BeClean.TestLib.csproj           TestLib
-          [ -n "$DATALAYER_VERSION" ]    && pack_and_push BeClean/BeClean.DataLayer/BeClean.DataLayer.csproj       DataLayer
-          [ -n "$DATALAYER_SQLSERVER_VERSION" ]  && pack_and_push BeClean/BeClean.DataLayer.SqlServer/BeClean.DataLayer.SqlServer.csproj   DataLayer.SqlServer
-          [ -n "$DATALAYER_POSTGRESQL_VERSION" ] && pack_and_push BeClean/BeClean.DataLayer.PostgreSql/BeClean.DataLayer.PostgreSql.csproj DataLayer.PostgreSql
-          [ -n "$API_VERSION" ]          && pack_and_push BeClean/BeClean.Api/BeClean.Api.csproj                   Api
+          [ -z "$UTIL_VERSION" ]         || pack_and_push BeClean/BeClean.Util/BeClean.Util.csproj                 Util
+          [ -z "$REPOSITORY_VERSION" ]   || pack_and_push BeClean/BeClean.Repository/BeClean.Repository.csproj     Repository
+          [ -z "$LOCALIZATION_VERSION" ] || pack_and_push BeClean/BeClean.Localization/BeClean.Localization.csproj Localization
+          [ -z "$TESTLIB_VERSION" ]      || pack_and_push BeClean/BeClean.TestLib/BeClean.TestLib.csproj           TestLib
+          [ -z "$DATALAYER_VERSION" ]    || pack_and_push BeClean/BeClean.DataLayer/BeClean.DataLayer.csproj       DataLayer
+          [ -z "$DATALAYER_SQLSERVER_VERSION" ]  || pack_and_push BeClean/BeClean.DataLayer.SqlServer/BeClean.DataLayer.SqlServer.csproj   DataLayer.SqlServer
+          [ -z "$DATALAYER_POSTGRESQL_VERSION" ] || pack_and_push BeClean/BeClean.DataLayer.PostgreSql/BeClean.DataLayer.PostgreSql.csproj DataLayer.PostgreSql
+          [ -z "$API_VERSION" ]          || pack_and_push BeClean/BeClean.Api/BeClean.Api.csproj                   Api

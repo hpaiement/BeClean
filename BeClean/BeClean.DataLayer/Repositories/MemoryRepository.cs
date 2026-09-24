@@ -39,6 +39,20 @@ namespace BeClean.DataLayer.Repositories
         public virtual async Task<TModel?> GetAsync<TId>(TId id) => await Task.FromResult(_collection.SingleOrDefault(entity => _primaryKeyProperty.GetValue(entity)?.Equals(id) ?? false));
 
         /// <summary>
+        /// Returns a shallow copy of the stored entity, so changes made on the returned object do not affect the collection
+        /// </summary>
+        /// <typeparam name="TId">The type of the t identifier.</typeparam>
+        /// <param name="id">The id.</param>
+        /// <returns>A Task&lt;TModel&gt; representing the asynchronous operation.</returns>
+        public virtual async Task<TModel?> GetNoTrackingAsync<TId>(TId id)
+        {
+            var entity = await GetAsync(id);
+            return entity == null ? null : (TModel)_memberwiseClone.Invoke(entity, null)!;
+        }
+
+        private static readonly MethodInfo _memberwiseClone = typeof(object).GetMethod("MemberwiseClone", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        /// <summary>
         /// Get many entities from dataset, applying filter according to the dictionary of keys
         /// </summary>
         /// <param name="keys"></param>

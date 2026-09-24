@@ -44,6 +44,17 @@ namespace BeClean.DataLayer.Repositories
         /// <returns>A Task&lt;TModel&gt; representing the asynchronous operation.</returns>
         public virtual async Task<TModel?> GetAsync<TId>(TId id) => await _dbSet.FindAsync(id);
 
+        /// <inheritdoc/>
+        public virtual async Task<TModel?> GetNoTrackingAsync<TId>(TId id)
+        {
+            var primaryKey = GetPrimaryKeyProperties() ?? throw new InvalidOperationException($"{typeof(TModel).Name} has no primary key");
+            if (primaryKey.Count > 1)
+                throw new NotSupportedException($"{nameof(GetNoTrackingAsync)} does not support composite primary key");
+
+            var keyName = primaryKey.Single().Name;
+            return await _dbSet.AsNoTracking().SingleOrDefaultAsync(e => EF.Property<TId>(e, keyName)!.Equals(id));
+        }
+
         /// <summary>
         /// Get many entities from dataset, applying filter according to the dictionary of keys
         /// </summary>
