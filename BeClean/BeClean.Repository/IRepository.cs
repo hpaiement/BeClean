@@ -18,6 +18,14 @@ namespace BeClean.Repository
         /// <returns>Task&lt;System.Nullable&lt;TModel&gt;&gt;.</returns>
         Task<TModel?> GetAsync<TId>(TId id);
         /// <summary>
+        /// Gets the entity as currently stored in the database, without tracking it.
+        /// Unsaved changes on a tracked instance of the same entity are not reflected in the returned object.
+        /// </summary>
+        /// <typeparam name="TId">The type of the t identifier.</typeparam>
+        /// <param name="id">The primary key value. Composite primary keys are not supported.</param>
+        /// <returns>Task&lt;System.Nullable&lt;TModel&gt;&gt;.</returns>
+        Task<TModel?> GetNoTrackingAsync<TId>(TId id);
+        /// <summary>
         /// Gets all entities asynchronous.
         /// </summary>
         /// <returns>Task&lt;IEnumerable&lt;TModel&gt;&gt;.</returns>
